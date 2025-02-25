@@ -3,7 +3,7 @@ description = "A pure rust xml implementation, based-on event stream api."
 documentation = "https://docs.rs/rexml"
 edition = "2024"
 license = "MIT"
-name = "mlang-rs"
+name = "rexml"
 repository = "https://github.com/styles-lab/rexml"
 version = "0.1.0"
 
