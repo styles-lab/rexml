@@ -1,0 +1,24 @@
+[package]
+description = "A pure rust xml implementation, based-on event stream api."
+documentation = "https://docs.rs/rexml"
+edition = "2024"
+license = "MIT"
+name = "mlang-rs"
+repository = "https://github.com/styles-lab/rexml"
+version = "0.1.0"
+
+[dependencies]
+heck = {version = "^0.5", optional = true}
+log = {version = "^0.4", features = ["kv"]}
+parserc = {version = "^0.4"}
+serde = {version = "^1", optional = true}
+thiserror = "^2"
+
+[dev-dependencies]
+pretty_env_logger = {version = "^0.5"}
+serde_json = {version = "^1"}
+
+[features]
+default = []
+reader = []
+writer = []
