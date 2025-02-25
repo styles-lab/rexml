@@ -2,3 +2,4 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod events;
+pub mod reader;

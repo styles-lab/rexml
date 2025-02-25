@@ -4,6 +4,7 @@ use std::borrow::Cow;
 
 use parserc::Span;
 
+/// Xml node name: local_name and optional prefix.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Name<'a> {
     /// A local name, e.g. `string`` in `xsi:string`.
@@ -47,15 +48,36 @@ impl<'a> Name<'a> {
     }
 }
 
+/// Represents the xml version num: 1.0 or 1.1
+#[derive(Debug, PartialEq, Clone)]
+pub enum XmlVersion {
+    Ver10,
+    Ver11,
+}
+
 /// Events for serializing/deserializing xml document.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Event<'a> {
+    /// XMLDecl: '<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'
+    XmlDecl {
+        /// VersionInfo: `1.0 or 1.1`. see [`XmlVersion`]
+        version: XmlVersion,
+        /// EncodingDecl: encoding="utf-8"
+        encoding: Option<Cow<'a, str>>,
+        /// `yes` or `no`
+        standalone: Option<bool>,
+        /// Code span of `XmlDecl`.
+        span: Option<Span>,
+    },
     /// Element node: <a...
     Element(Name<'a>, Option<Span>),
     /// Attr node: a=...
     Attr {
+        /// Attribute name.
         name: Name<'a>,
+        /// Attr value.
         value: Cow<'a, str>,
+        /// Code span of this node.
         span: Option<Span>,
     },
     /// #Text node..
@@ -86,6 +108,17 @@ impl<'a> Event<'a> {
     ///
     pub fn into_owned(self) -> Event<'static> {
         match self {
+            Event::XmlDecl {
+                version,
+                encoding,
+                standalone,
+                span,
+            } => Event::XmlDecl {
+                version,
+                encoding: encoding.map(|v| v.into_owned().into()),
+                standalone,
+                span,
+            },
             Event::Element(name, span) => Event::Element(name.into_owned(), span),
             Event::Attr { name, value, span } => Event::Attr {
                 name: name.into_owned(),
@@ -106,6 +139,37 @@ impl<'a> Event<'a> {
 }
 
 impl<'a> Event<'a> {
+    /// Create a `xmldecl` event.
+    pub fn xml_decl<E>(version: XmlVersion, encoding: E, standalone: bool) -> Self
+    where
+        Cow<'a, str>: From<E>,
+    {
+        Self::XmlDecl {
+            version,
+            encoding: Some(encoding.into()),
+            standalone: Some(standalone),
+            span: None,
+        }
+    }
+
+    /// Create a `xmldecl` event.
+    pub fn xml_decl_with_span<E>(
+        version: XmlVersion,
+        encoding: E,
+        standalone: bool,
+        span: Span,
+    ) -> Self
+    where
+        Cow<'a, str>: From<E>,
+    {
+        Self::XmlDecl {
+            version,
+            encoding: Some(encoding.into()),
+            standalone: Some(standalone),
+            span: Some(span),
+        }
+    }
+
     /// Create a `element` event.
     pub fn element<N>(name: N) -> Self
     where
