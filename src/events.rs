@@ -86,7 +86,11 @@ pub enum Event<'a> {
     CData(Cow<'a, str>, Option<Span>),
 
     /// Processing Instruction: <?xml version="1.0" encoding="UTF-8" ?>
-    ProcessingInstruction(Name<'a>, Option<Span>),
+    PI {
+        name: Name<'a>,
+        unparsed: Option<Cow<'a, str>>,
+        span: Option<Span>,
+    },
 
     /// Comment node: <!-- xxxxx -->
     Comment(Cow<'a, str>, Option<Span>),
@@ -127,9 +131,15 @@ impl<'a> Event<'a> {
             },
             Event::Text(cow, span) => Event::Text(cow.into_owned().into(), span),
             Event::CData(cow, span) => Event::CData(cow.into_owned().into(), span),
-            Event::ProcessingInstruction(name, span) => {
-                Event::ProcessingInstruction(name.into_owned(), span)
-            }
+            Event::PI {
+                name,
+                unparsed,
+                span,
+            } => Event::PI {
+                name: name.into_owned(),
+                unparsed: unparsed.map(|v| v.into_owned().into()),
+                span,
+            },
             Event::Comment(cow, span) => Event::Comment(cow.into_owned().into(), span),
             Event::DocumentType(cow, span) => Event::DocumentType(cow.into_owned().into(), span),
             Event::Notation(cow, span) => Event::Notation(cow.into_owned().into(), span),
@@ -245,19 +255,29 @@ impl<'a> Event<'a> {
     }
 
     /// Create a `processing instruction` event.
-    pub fn processing_instruction<V>(value: V) -> Self
+    pub fn processing_instruction<N, U>(name: N, unparsed: U) -> Self
     where
-        Cow<'a, str>: From<V>,
+        Name<'a>: From<N>,
+        Cow<'a, str>: From<U>,
     {
-        Self::ProcessingInstruction(value.into(), None)
+        Self::PI {
+            name: name.into(),
+            unparsed: Some(unparsed.into()),
+            span: None,
+        }
     }
 
     /// Create a `processing instruction` event.
-    pub fn processing_instruction_with_span<V>(value: V, span: Span) -> Self
+    pub fn processing_instruction_with_span<N, U>(name: N, unparsed: U, span: Span) -> Self
     where
-        Cow<'a, str>: From<V>,
+        Name<'a>: From<N>,
+        Cow<'a, str>: From<U>,
     {
-        Self::ProcessingInstruction(value.into(), Some(span))
+        Self::PI {
+            name: name.into(),
+            unparsed: Some(unparsed.into()),
+            span: Some(span),
+        }
     }
 
     /// Create a `comment` event.
