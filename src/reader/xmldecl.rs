@@ -2,7 +2,7 @@ use parserc::{
     ControlFlow, ParseContext, Parser, ParserExt, Span, ensure_char, ensure_keyword, take_while,
 };
 
-use crate::events::{Event, XmlVersion};
+use crate::types::XmlVersion;
 
 use super::{
     ReadError, ReadKind,
@@ -98,28 +98,6 @@ pub(super) fn parse_standalone_decl(
     Ok(flag)
 }
 
-pub(super) fn parse_xml_decl<'a>(
-    ctx: &mut ParseContext<'a>,
-) -> parserc::Result<Event<'a>, ReadError> {
-    let start = ensure_keyword("<?xml").parse(ctx)?;
-    let version = parse_version_info(ctx)?;
-
-    let encoding = parse_encoding_decl.ok().parse(ctx)?;
-
-    let standalone = parse_standalone_decl.ok().parse(ctx)?;
-
-    skip_ws.ok().parse(ctx)?;
-
-    let end = ensure_keyword("?>").parse(ctx)?;
-
-    Ok(Event::XmlDecl {
-        version,
-        encoding: encoding.map(|v| ctx.as_str(v).into()),
-        standalone,
-        span: Some(start.extend_to_inclusive(end)),
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,55 +153,6 @@ mod tests {
             standalone="no""#
             )),
             Ok(false)
-        );
-    }
-
-    #[test]
-    fn test_xml_decl() {
-        assert_eq!(
-            parse_xml_decl(&mut ParseContext::from(
-                "<?xml version='1.1' encoding='utf-8' standalone='yes' ?>"
-            )),
-            Ok(Event::xml_decl_with_span(
-                XmlVersion::Ver11,
-                "utf-8",
-                true,
-                Span::new(0, 56, 1, 1)
-            ))
-        );
-
-        assert_eq!(
-            parse_xml_decl(&mut ParseContext::from(
-                "<?xml version='1.0' standalone='yes'?>"
-            )),
-            Ok(Event::XmlDecl {
-                version: XmlVersion::Ver10,
-                encoding: None,
-                standalone: Some(true),
-                span: Some(Span::new(0, 38, 1, 1))
-            })
-        );
-
-        assert_eq!(
-            parse_xml_decl(&mut ParseContext::from(
-                "<?xml version='1.0' encoding='utf-16' ?>"
-            )),
-            Ok(Event::XmlDecl {
-                version: XmlVersion::Ver10,
-                encoding: Some("utf-16".into()),
-                standalone: None,
-                span: Some(Span::new(0, 40, 1, 1))
-            })
-        );
-
-        assert_eq!(
-            parse_xml_decl(&mut ParseContext::from("<?xml version='1.0'?>")),
-            Ok(Event::XmlDecl {
-                version: XmlVersion::Ver10,
-                encoding: None,
-                standalone: None,
-                span: Some(Span::new(0, 21, 1, 1))
-            })
         );
     }
 }

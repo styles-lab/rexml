@@ -3,8 +3,6 @@ use parserc::{
     ensure_keyword, take_till, take_while,
 };
 
-use crate::events::Name;
-
 use super::{ReadError, ReadKind, pi::parse_pi};
 
 pub(super) fn skip_ws(ctx: &mut ParseContext<'_>) -> parserc::Result<Span, ReadError> {
