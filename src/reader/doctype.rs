@@ -1,4 +1,4 @@
-use parserc::{ParseContext, Parser, ParserExt, Span, ensure_keyword};
+use parserc::{ControlFlow, ParseContext, Parser, ParserExt, Span, ensure_keyword, take_till};
 
 use crate::reader::{
     ReadKind,
@@ -67,11 +67,56 @@ pub(super) fn parse_external_id(
     }
 }
 
+pub(super) fn parse_doc_type_decl(ctx: &mut ParseContext<'_>) -> parserc::Result<Span, ReadError> {
+    let span = ctx.span();
+
+    let start = ensure_keyword("<!DOCTYPE")
+        .map_err(|_: ReadError| ReadError::DocType(ReadKind::Prefix("<!DOCTYPE"), span))
+        .parse(ctx)?;
+
+    let mut c = 1;
+
+    loop {
+        take_till(|c| matches!(c, '<' | '>' | '"' | '\'')).parse(ctx)?;
+
+        let (next, span) = ctx.peek();
+
+        if let Some(next) = next {
+            match next {
+                '<' => {
+                    ctx.next();
+                    c += 1;
+                }
+                '>' => {
+                    ctx.next();
+                    c -= 1;
+
+                    if c == 0 {
+                        return Ok(start.extend_to_inclusive(span));
+                    }
+                }
+                _ => {
+                    quote(|_| Ok(()))
+                        .fatal(ReadError::DocType(ReadKind::Quote, span))
+                        .parse(ctx)?;
+                }
+            }
+        } else {
+            break;
+        }
+    }
+
+    return Err(ControlFlow::Fatal(ReadError::DocType(
+        ReadKind::Suffix(">"),
+        span,
+    )));
+}
+
 #[cfg(test)]
 mod tests {
     use parserc::{ParseContext, Span};
 
-    use crate::reader::doctype::{ExternalId, parse_external_id};
+    use crate::reader::doctype::{ExternalId, parse_doc_type_decl, parse_external_id};
 
     #[test]
     fn test_external_id() {
@@ -92,6 +137,25 @@ mod tests {
                 Span::new(8, 55, 1, 9),
                 Span::new(82, 51, 2, 18)
             ))
+        );
+    }
+
+    #[test]
+    fn test_doc_type() {
+        assert_eq!(
+            parse_doc_type_decl(&mut ParseContext::from(
+                r#"<!DOCTYPE greeting SYSTEM "hello.dtd">"#
+            )),
+            Ok(Span::new(0, 38, 1, 1))
+        );
+
+        assert_eq!(
+            parse_doc_type_decl(&mut ParseContext::from(
+                r#"<!DOCTYPE greeting [
+                   <!ELEMENT greeting (#PCDATA)>
+                ]>"#
+            )),
+            Ok(Span::new(0, 88, 1, 1))
         );
     }
 }

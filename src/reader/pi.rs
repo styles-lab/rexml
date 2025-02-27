@@ -7,11 +7,12 @@ use super::{
     misc::{parse_name, skip_ws},
 };
 
-#[allow(unused)]
-fn parse_pi(ctx: &mut ParseContext<'_>) -> parserc::Result<(Span, Option<Span>), ReadError> {
+pub(super) fn parse_pi(
+    ctx: &mut ParseContext<'_>,
+) -> parserc::Result<(Span, Option<Span>), ReadError> {
     let start = ctx.span();
     ensure_keyword("<?")
-        .map_err(|_: ReadError| ReadError::PI(ReadKind::PIStart, start))
+        .map_err(|_: ReadError| ReadError::PI(ReadKind::Prefix("<?"), start))
         .parse(ctx)?;
 
     let span = ctx.span();
@@ -63,7 +64,7 @@ fn parse_pi(ctx: &mut ParseContext<'_>) -> parserc::Result<(Span, Option<Span>),
     }
 
     ensure_keyword("?>")
-        .map_err(|_: ReadError| ReadError::PI(ReadKind::PIStart, start))
+        .map_err(|_: ReadError| ReadError::PI(ReadKind::Suffix("?>"), start))
         .parse(ctx)?;
 
     Ok((name, None))

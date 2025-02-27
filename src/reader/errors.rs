@@ -28,6 +28,20 @@ pub enum ReadError {
 
     #[error("read `external-id` error, expect {0} {1}")]
     ExternalId(ReadKind, Span),
+
+    #[error("read `PEReference` error, expect {0} {1}")]
+    PERef(ReadKind, Span),
+    #[error("read `EntityRef` error, expect {0} {1}")]
+    EntityRef(ReadKind, Span),
+    #[error("read `CharRef` error, expect {0} {1}")]
+    CharRef(ReadKind, Span),
+    #[error("read `DocType` error, expect {0} {1}")]
+    DocType(ReadKind, Span),
+
+    #[error("read `CData` error, expect {0} {1}")]
+    CData(ReadKind, Span),
+    #[error("read `AttrValue` error, expect {0} {1}")]
+    AttrValue(ReadKind, Span),
 }
 
 impl ParseError for ReadError {}
@@ -41,32 +55,24 @@ pub enum ReadKind {
     VerStr,
     #[error("`version=`")]
     LitVer,
+    #[error("`LitNum`")]
+    LitNum,
     #[error("`yes` or `no`")]
     SDBool,
     #[error("`encoding name`")]
     EncName,
-    #[error("`<!--`")]
-    CommentStart,
-    #[error("`-->`")]
-    CommentEnd,
-    #[error("<?")]
-    PIStart,
     #[error("`PITarget`")]
     PITarget,
     #[error("`PIUnparsed`")]
     PIUnparsed,
-    #[error("`?>`")]
-    PIEnd,
     #[error("`('X' | 'x') ('M' | 'm') ('L' | 'l')`")]
     ReservedXml,
     #[error("`NameStartChar`")]
     NameStartChar,
     #[error("`NameChar`")]
     NameChar,
-    #[error("start tag `'` or `\"`")]
-    QuoteStart,
-    #[error("end tag `'` or `\"`")]
-    QuoteEnd,
+    #[error("`Name`")]
+    Name,
     #[error("`SYSTEM` or `PUBLIC`")]
     ExternalType,
     #[error("`white space`")]
@@ -75,4 +81,8 @@ pub enum ReadKind {
     SystemLiteral,
     #[error("`PubIdLiteral`")]
     PubIdLiteral,
+    #[error("`prefix({0})`")]
+    Prefix(&'static str),
+    #[error("`suffix({0})`")]
+    Suffix(&'static str),
 }
