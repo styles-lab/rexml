@@ -1,14 +1,9 @@
 use parserc::{ParseContext, Span};
 
-use super::{ReadError, misc::Ref};
-
-pub(super) enum AttrValue {
-    Ref(Ref),
-    Text(Span),
-}
+use super::{Attr, ReadError};
 
 pub(super) fn parse_attr_value(
     ctx: &mut ParseContext<'_>,
-) -> parserc::Result<Vec<AttrValue>, ReadError> {
+) -> parserc::Result<Vec<Attr>, ReadError> {
     todo!()
 }

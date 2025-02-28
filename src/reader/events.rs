@@ -26,7 +26,7 @@ pub enum CharRef {
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
 pub struct EntityRef(
     /// The span of entity name in the source code.
-    pub Span,
+    pub Name,
 );
 
 /// See [`Character and Entity References`](https://www.w3.org/TR/xml11/#NT-Reference)
@@ -57,7 +57,7 @@ pub struct Comment(pub Span);
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
 pub struct PI {
     /// The span of PI target name in the source code.
-    pub target: Span,
+    pub target: Name,
     /// The span of unparsed content of the PI.
     pub unparsed: Option<Span>,
 }

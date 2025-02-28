@@ -3,7 +3,7 @@ use parserc::{
     take_till, take_while,
 };
 
-use super::{PI, ReadError, ReadKind, WS, misc::parse_name};
+use super::{Name, PI, ReadError, ReadKind, WS};
 
 impl FromSrc for PI {
     type Error = ReadError;
@@ -19,15 +19,15 @@ impl FromSrc for PI {
 
         let span = ctx.span();
 
-        let target = parse_name
+        let target = Name::into_parser()
             .map_err(|_| ReadError::PI(ReadKind::PITarget, span))
             .parse(ctx)?;
 
         // check reserved word `('X' | 'x') ('M' | 'm') ('L' | 'l')`
-        if ctx.as_str(target).to_lowercase() == "xml" {
+        if ctx.as_str(target.local_name).to_lowercase() == "xml" {
             return Err(ControlFlow::Fatal(ReadError::PI(
                 ReadKind::ReservedXml,
-                target,
+                target.local_name,
             )));
         }
 
@@ -91,7 +91,10 @@ mod tests {
         assert_eq!(
             PI::parse(&mut ParseContext::from("<?hello?>")),
             Ok(PI {
-                target: Span::new(2, 5, 1, 3),
+                target: Name {
+                    prefix: None,
+                    local_name: Span::new(2, 5, 1, 3)
+                },
                 unparsed: None
             })
         );
@@ -99,7 +102,10 @@ mod tests {
         assert_eq!(
             PI::parse(&mut ParseContext::from("<?hello world? > ?>")),
             Ok(PI {
-                target: Span::new(2, 5, 1, 3),
+                target: Name {
+                    prefix: None,
+                    local_name: Span::new(2, 5, 1, 3)
+                },
                 unparsed: Some(Span::new(8, 9, 1, 9))
             })
         );

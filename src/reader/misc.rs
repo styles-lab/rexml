@@ -3,7 +3,7 @@ use parserc::{
     ensure_char_if, ensure_keyword, take_till, take_while,
 };
 
-use super::{Comment, Name, PI, ReadError, ReadEvent, ReadKind, WS};
+use super::{CharRef, Comment, EntityRef, Name, PI, ReadError, ReadEvent, ReadKind, Ref, WS};
 
 impl FromSrc for WS {
     type Error = ReadError;
@@ -116,22 +116,6 @@ impl FromSrc for Comment {
     }
 }
 
-pub(super) fn parse_name(ctx: &mut ParseContext<'_>) -> parserc::Result<Span, ReadError> {
-    let start = ctx.span();
-    let start = ensure_char_if(|c| c.is_alphabetic() || c == ':' || c == '_')
-        .map_err(|_: ReadError| ReadError::Name(ReadKind::NameStartChar, start))
-        .parse(ctx)?;
-
-    let chars = take_while(|c| c == ':' || c == '_' || c == '-' || c == '.' || c.is_alphanumeric())
-        .parse(ctx)?;
-
-    if let Some(chars) = chars {
-        Ok(start.extend_to_inclusive(chars))
-    } else {
-        Ok(start)
-    }
-}
-
 impl FromSrc for Name {
     type Error = ReadError;
 
@@ -177,16 +161,6 @@ impl FromSrc for Name {
     }
 }
 
-pub(super) enum CharRef {
-    Decimal(Span),
-    Hex(Span),
-}
-
-pub(super) enum Ref {
-    Entity(Span),
-    Char(CharRef),
-}
-
 pub(super) fn parse_char_ref(ctx: &mut ParseContext<'_>) -> parserc::Result<CharRef, ReadError> {
     let start = ctx.span();
     let hex = ensure_keyword("&#")
@@ -207,19 +181,19 @@ pub(super) fn parse_char_ref(ctx: &mut ParseContext<'_>) -> parserc::Result<Char
     )))?;
 
     if hex {
-        Ok(CharRef::Hex(value))
+        Ok(CharRef::Digit(value))
     } else {
-        Ok(CharRef::Decimal(value))
+        Ok(CharRef::HexDigit(value))
     }
 }
 
-pub(super) fn parse_entity_ref(ctx: &mut ParseContext<'_>) -> parserc::Result<Span, ReadError> {
+pub(super) fn parse_entity_ref(ctx: &mut ParseContext<'_>) -> parserc::Result<Name, ReadError> {
     let start = ctx.span();
     ensure_char('&')
         .map_err(|_: ReadError| ReadError::EntityRef(ReadKind::Prefix("%"), start))
         .parse(ctx)?;
 
-    let name = parse_name
+    let name = Name::into_parser()
         .fatal(ReadError::EntityRef(ReadKind::Name, ctx.span()))
         .parse(ctx)?;
 
@@ -232,8 +206,8 @@ pub(super) fn parse_entity_ref(ctx: &mut ParseContext<'_>) -> parserc::Result<Sp
 
 pub(super) fn parse_ref(ctx: &mut ParseContext<'_>) -> parserc::Result<Ref, ReadError> {
     parse_entity_ref
-        .map(|v| Ref::Entity(v))
-        .or(parse_char_ref.map(|v| Ref::Char(v)))
+        .map(|v| Ref::EntityRef(EntityRef(v)))
+        .or(parse_char_ref.map(|v| Ref::CharRef(v)))
         .parse(ctx)
 }
 
@@ -324,23 +298,45 @@ mod tests {
     #[test]
     fn test_name() {
         assert_eq!(
-            parse_name(&mut ParseContext::from(":hello")),
-            Ok(Span::new(0, 6, 1, 1))
+            Name::parse(&mut ParseContext::from(":hello")),
+            Err(ControlFlow::Recoverable(ReadError::Name(
+                ReadKind::NameStartChar,
+                Span {
+                    offset: 0,
+                    len: 1,
+                    lines: 1,
+                    cols: 1
+                }
+            )))
         );
         assert_eq!(
-            parse_name(&mut ParseContext::from("world:hello")),
-            Ok(Span::new(0, 11, 1, 1))
+            Name::parse(&mut ParseContext::from("world:hello")),
+            Ok(Name {
+                prefix: Some(Span::new(0, 5, 1, 1)),
+                local_name: Span::new(6, 5, 1, 7)
+            })
         );
         assert_eq!(
-            parse_name(&mut ParseContext::from("start-name")),
-            Ok(Span::new(0, 10, 1, 1))
+            Name::parse(&mut ParseContext::from("start-name")),
+            Ok(Name {
+                prefix: None,
+                local_name: Span::new(0, 10, 1, 1)
+            })
         );
         assert_eq!(
-            parse_name(&mut ParseContext::from("start-name:")),
-            Ok(Span::new(0, 11, 1, 1))
+            Name::parse(&mut ParseContext::from("start-name:")),
+            Err(ControlFlow::Fatal(ReadError::Name(
+                ReadKind::LocalName,
+                Span {
+                    offset: 11,
+                    len: 0,
+                    lines: 1,
+                    cols: 12
+                }
+            )))
         );
         assert_eq!(
-            parse_name(&mut ParseContext::from("-world:hello")),
+            Name::parse(&mut ParseContext::from("-world:hello")),
             Err(ControlFlow::Recoverable(ReadError::Name(
                 ReadKind::NameStartChar,
                 Span::new(0, 1, 1, 1)
@@ -348,7 +344,7 @@ mod tests {
         );
 
         assert_eq!(
-            parse_name(&mut ParseContext::from("1world:hello")),
+            Name::parse(&mut ParseContext::from("1world:hello")),
             Err(ControlFlow::Recoverable(ReadError::Name(
                 ReadKind::NameStartChar,
                 Span::new(0, 1, 1, 1)
