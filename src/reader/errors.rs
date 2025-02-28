@@ -40,8 +40,10 @@ pub enum ReadError {
 
     #[error("read `CData` error, expect {0} {1}")]
     CData(ReadKind, Span),
-    #[error("read `AttrValue` error, expect {0} {1}")]
-    AttrValue(ReadKind, Span),
+    #[error("read `Attr` error, expect {0} {1}")]
+    Attr(ReadKind, Span),
+    #[error("read `CharData` error")]
+    CharData,
 }
 
 impl ParseError for ReadError {}
@@ -89,4 +91,7 @@ pub enum ReadKind {
     Suffix(&'static str),
     #[error("`split({0})`")]
     Split(&'static str),
+
+    #[error("`=`")]
+    Eq,
 }

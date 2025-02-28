@@ -11,31 +11,33 @@ pub struct Name {
     pub local_name: Span,
 }
 
-/// CharRef ::= '&#' [0-9]+ ';'| '&#x' [0-9a-fA-F]+ ';'
-#[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
-pub enum CharRef {
-    /// '&#' [0-9]+ ';'
-    Digit(Span),
-    /// '&#x' [0-9a-fA-F]+ ';'
-    HexDigit(Span),
-}
+// /// CharRef ::= '&#' [0-9]+ ';'| '&#x' [0-9a-fA-F]+ ';'
+// #[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
+// pub enum CharRef {
+//     /// '&#' [0-9]+ ';'
+//     Digit(Span),
+//     /// '&#x' [0-9a-fA-F]+ ';'
+//     HexDigit(Span),
+// }
 
-/// EntityRef ::= '&' Name ';'
+// /// EntityRef ::= '&' Name ';'
+// ///
+// /// See [`Character and Entity References`](https://www.w3.org/TR/xml11/#NT-Reference)
+// #[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
+// pub struct EntityRef(
+//     /// The span of entity name in the source code.
+//     pub Name,
+// );
+
+// /// See [`Character and Entity References`](https://www.w3.org/TR/xml11/#NT-Reference)
+// #[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
+// pub enum Ref {
+//     CharRef(CharRef),
+//     EntityRef(EntityRef),
+// }
+
+/// Unparsed chardata my includes `CharRef` or `EntityRef`
 ///
-/// See [`Character and Entity References`](https://www.w3.org/TR/xml11/#NT-Reference)
-#[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
-pub struct EntityRef(
-    /// The span of entity name in the source code.
-    pub Name,
-);
-
-/// See [`Character and Entity References`](https://www.w3.org/TR/xml11/#NT-Reference)
-#[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
-pub enum Ref {
-    CharRef(CharRef),
-    EntityRef(EntityRef),
-}
-
 /// See xml [`CharData`](https://www.w3.org/TR/xml11/#NT-CharData)
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
 pub struct CharData(
@@ -68,30 +70,13 @@ pub struct WS(
     pub Span,
 );
 
-/// A trribute value segment.
-#[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
-pub enum AttrValueSeg {
-    /// See xml [`CharData`](https://www.w3.org/TR/xml11/#NT-CharData)
-    CharData(CharData),
-    Ref(Ref),
-}
-
-/// See [`AttrValue`](https://www.w3.org/TR/xml11/#NT-AttValue)
-#[derive(Debug, PartialEq, Clone)]
-pub enum AttrValue {
-    /// No reference segments.
-    CharData(CharData),
-    /// Segments.
-    Segments(Vec<AttrValueSeg>),
-}
-
 /// See [`Attribute`](https://www.w3.org/TR/xml11/#NT-Attribute)
 #[derive(Debug, PartialEq, Clone)]
 pub struct Attr {
     /// Attribute name part.
     pub name: Name,
-    /// Attribute value part.
-    pub value: AttrValue,
+    /// Unparsed attribute value part.
+    pub value: Span,
 }
 
 /// See [`XmlDecl`](https://www.w3.org/TR/xml11/#NT-XMLDecl)
@@ -105,11 +90,21 @@ pub struct XmlDecl {
     pub standalone: Option<bool>,
 }
 
+/// Unparsed doctype element.
+///
+/// See [`DocType`](https://www.w3.org/TR/xml11/#NT-doctypedecl)
+#[derive(Debug, PartialEq, Clone)]
+pub struct DocType(
+    /// The span of `CharData` in the source code.
+    pub Span,
+);
+
 /// Read event returns by xml parsers.
 #[derive(Debug, PartialEq, Clone)]
 pub enum ReadEvent {
     XmlDecl(XmlDecl),
-    Ref(Ref),
+    DocType(DocType),
+    // Ref(Ref),
     PI(PI),
     WS(WS),
     CharData(CharData),

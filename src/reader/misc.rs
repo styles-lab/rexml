@@ -3,7 +3,7 @@ use parserc::{
     ensure_char_if, ensure_keyword, take_till, take_while,
 };
 
-use super::{CharRef, Comment, EntityRef, Name, PI, ReadError, ReadEvent, ReadKind, Ref, WS};
+use super::{CData, CharData, Comment, Name, PI, ReadError, ReadEvent, ReadKind, WS};
 
 impl FromSrc for WS {
     type Error = ReadError;
@@ -161,55 +161,76 @@ impl FromSrc for Name {
     }
 }
 
-pub(super) fn parse_char_ref(ctx: &mut ParseContext<'_>) -> parserc::Result<CharRef, ReadError> {
-    let start = ctx.span();
-    let hex = ensure_keyword("&#")
-        .map(|_| false)
-        .or(ensure_keyword("&#x").map(|_| true))
-        .map_err(|_: ReadError| ReadError::CharRef(ReadKind::Prefix("&# or &#x"), start))
-        .parse(ctx)?;
+// impl FromSrc for CharRef {
+//     type Error = ReadError;
 
-    let value = if hex {
-        take_while(|c| c.is_ascii_hexdigit()).parse(ctx)?
-    } else {
-        take_while(|c| c.is_ascii_digit()).parse(ctx)?
-    };
+//     fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
+//     where
+//         Self: Sized,
+//     {
+//         let start = ctx.span();
+//         let hex = ensure_keyword("&#")
+//             .map(|_| false)
+//             .or(ensure_keyword("&#x").map(|_| true))
+//             .map_err(|_: ReadError| ReadError::CharRef(ReadKind::Prefix("&# or &#x"), start))
+//             .parse(ctx)?;
 
-    let value = value.ok_or(ControlFlow::Fatal(ReadError::CharRef(
-        ReadKind::LitNum,
-        ctx.span(),
-    )))?;
+//         let value = if hex {
+//             take_while(|c| c.is_ascii_hexdigit()).parse(ctx)?
+//         } else {
+//             take_while(|c| c.is_ascii_digit()).parse(ctx)?
+//         };
 
-    if hex {
-        Ok(CharRef::Digit(value))
-    } else {
-        Ok(CharRef::HexDigit(value))
-    }
-}
+//         let value = value.ok_or(ControlFlow::Fatal(ReadError::CharRef(
+//             ReadKind::LitNum,
+//             ctx.span(),
+//         )))?;
 
-pub(super) fn parse_entity_ref(ctx: &mut ParseContext<'_>) -> parserc::Result<Name, ReadError> {
-    let start = ctx.span();
-    ensure_char('&')
-        .map_err(|_: ReadError| ReadError::EntityRef(ReadKind::Prefix("%"), start))
-        .parse(ctx)?;
+//         if hex {
+//             Ok(CharRef::Digit(value))
+//         } else {
+//             Ok(CharRef::HexDigit(value))
+//         }
+//     }
+// }
 
-    let name = Name::into_parser()
-        .fatal(ReadError::EntityRef(ReadKind::Name, ctx.span()))
-        .parse(ctx)?;
+// impl FromSrc for EntityRef {
+//     type Error = ReadError;
 
-    ensure_char(';')
-        .fatal(ReadError::EntityRef(ReadKind::Suffix(";"), ctx.span()))
-        .parse(ctx)?;
+//     fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
+//     where
+//         Self: Sized,
+//     {
+//         let start = ctx.span();
+//         ensure_char('&')
+//             .map_err(|_: ReadError| ReadError::EntityRef(ReadKind::Prefix("%"), start))
+//             .parse(ctx)?;
 
-    Ok(name)
-}
+//         let name = Name::into_parser()
+//             .fatal(ReadError::EntityRef(ReadKind::Name, ctx.span()))
+//             .parse(ctx)?;
 
-pub(super) fn parse_ref(ctx: &mut ParseContext<'_>) -> parserc::Result<Ref, ReadError> {
-    parse_entity_ref
-        .map(|v| Ref::EntityRef(EntityRef(v)))
-        .or(parse_char_ref.map(|v| Ref::CharRef(v)))
-        .parse(ctx)
-}
+//         ensure_char(';')
+//             .fatal(ReadError::EntityRef(ReadKind::Suffix(";"), ctx.span()))
+//             .parse(ctx)?;
+
+//         Ok(Self(name))
+//     }
+// }
+
+// impl FromSrc for Ref {
+//     type Error = ReadError;
+
+//     fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
+//     where
+//         Self: Sized,
+//     {
+//         EntityRef::into_parser()
+//             .map(|v| Ref::EntityRef(v))
+//             .or(CharRef::into_parser().map(|v| Ref::CharRef(v)))
+//             .parse(ctx)
+//     }
+// }
 
 pub(super) fn parse_misc(ctx: &mut ParseContext<'_>) -> parserc::Result<ReadEvent, ReadError> {
     Comment::into_parser()
@@ -219,53 +240,88 @@ pub(super) fn parse_misc(ctx: &mut ParseContext<'_>) -> parserc::Result<ReadEven
         .parse(ctx)
 }
 
-pub(super) fn parse_cdata(ctx: &mut ParseContext<'_>) -> parserc::Result<Span, ReadError> {
-    let span = ctx.span();
-    ensure_keyword("<![CDATA[")
-        .map_err(|_: ReadError| ReadError::CData(ReadKind::Prefix("<![CDATA["), span))
-        .parse(ctx)?;
+impl FromSrc for CData {
+    type Error = ReadError;
 
-    let mut content = ctx.span();
-    content.len = 0;
+    fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
+    where
+        Self: Sized,
+    {
+        let span = ctx.span();
+        ensure_keyword("<![CDATA[")
+            .map_err(|_: ReadError| ReadError::CData(ReadKind::Prefix("<![CDATA["), span))
+            .parse(ctx)?;
 
-    loop {
-        if let Some(chars) = take_till(|c| c == ']').parse(ctx)? {
+        let mut content = ctx.span();
+        content.len = 0;
+
+        loop {
+            if let Some(chars) = take_till(|c| c == ']').parse(ctx)? {
+                content = content.extend_to_inclusive(chars);
+            }
+
+            let chars = match take_while(|c| c == ']').parse(ctx)? {
+                Some(chars) => chars,
+                _ => break,
+            };
+
             content = content.extend_to_inclusive(chars);
-        }
 
-        let chars = match take_while(|c| c == ']').parse(ctx)? {
-            Some(chars) => chars,
-            _ => break,
-        };
+            if chars.len() > 1 {
+                let (next, span) = ctx.peek();
 
-        content = content.extend_to_inclusive(chars);
+                if let Some(next) = next {
+                    match next {
+                        '>' => {
+                            content.len -= 2;
 
-        if chars.len() > 1 {
-            let (next, span) = ctx.peek();
-
-            if let Some(next) = next {
-                match next {
-                    '>' => {
-                        content.len -= 2;
-
-                        ctx.next();
-                        return Ok(content);
+                            ctx.next();
+                            return Ok(Self(content));
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
         }
-    }
 
-    Err(ControlFlow::Fatal(ReadError::CData(
-        ReadKind::Suffix("]]>"),
-        ctx.span(),
-    )))
+        Err(ControlFlow::Fatal(ReadError::CData(
+            ReadKind::Suffix("]]>"),
+            ctx.span(),
+        )))
+    }
+}
+
+impl FromSrc for CharData {
+    type Error = ReadError;
+
+    fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
+    where
+        Self: Sized,
+    {
+        let span = take_till(|c| c == '<')
+            .parse(ctx)?
+            .ok_or(ControlFlow::Recoverable(ReadError::CharData))?;
+
+        Ok(Self(span))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_unparsed_chardata() {
+        assert_eq!(
+            CharData::parse(&mut ParseContext::from("111111\n111"),),
+            Ok(CharData(Span::new(0, 10, 1, 1)))
+        );
+
+        assert_eq!(
+            CharData::parse(&mut ParseContext::from("\n111111111<"),),
+            Ok(CharData(Span::new(0, 10, 1, 1)))
+        );
+    }
 
     #[test]
     fn test_comment() {
@@ -355,12 +411,12 @@ mod tests {
     #[test]
     fn test_cdata() {
         assert_eq!(
-            parse_cdata(&mut ParseContext::from("<![CDATA[]]he;<>]]>")),
-            Ok(Span::new(9, 7, 1, 10))
+            CData::parse(&mut ParseContext::from("<![CDATA[]]he;<>]]>")),
+            Ok(CData(Span::new(9, 7, 1, 10)))
         );
 
         assert_eq!(
-            parse_cdata(&mut ParseContext::from("]]he;<>]]>")),
+            CData::parse(&mut ParseContext::from("]]he;<>]]>")),
             Err(ControlFlow::Recoverable(ReadError::CData(
                 ReadKind::Prefix("<![CDATA["),
                 Span::new(0, 1, 1, 1)
@@ -368,7 +424,7 @@ mod tests {
         );
 
         assert_eq!(
-            parse_cdata(&mut ParseContext::from("<![CDATA[]]he;<>")),
+            CData::parse(&mut ParseContext::from("<![CDATA[]]he;<>")),
             Err(ControlFlow::Fatal(ReadError::CData(
                 ReadKind::Suffix("]]>"),
                 Span::new(16, 0, 1, 17)
