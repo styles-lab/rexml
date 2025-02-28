@@ -1,11 +1,10 @@
-use parserc::{ControlFlow, ParseContext, Parser, ParserExt, Span, ensure_keyword, take_till};
-
-use crate::reader::{
-    ReadKind,
-    misc::{quote, skip_ws},
+use parserc::{
+    ControlFlow, IntoParser, ParseContext, Parser, ParserExt, Span, ensure_keyword, take_till,
 };
 
-use super::ReadError;
+use crate::reader::{ReadKind, misc::quote};
+
+use super::{ReadError, WS};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub(super) enum ExternalId {
@@ -24,7 +23,7 @@ pub(super) fn parse_external_id(
         .map_err(|_: ReadError| ReadError::ExternalId(ReadKind::ExternalType, start))
         .parse(ctx)?;
 
-    skip_ws
+    WS::into_parser()
         .fatal(ReadError::ExternalId(ReadKind::Ws, start))
         .parse(ctx)?;
 
@@ -55,7 +54,7 @@ pub(super) fn parse_external_id(
 
         let start = ctx.span();
 
-        skip_ws
+        WS::into_parser()
             .fatal(ReadError::ExternalId(ReadKind::Ws, start))
             .parse(ctx)?;
 

@@ -1,18 +1,16 @@
 use parserc::{
-    ControlFlow, ParseContext, Parser, ParserExt, Span, ensure_char, ensure_keyword, take_while,
+    ControlFlow, FromSrc, ParseContext, Parser, ParserExt, Span, ensure_char, ensure_keyword,
+    take_while,
 };
 
 use crate::types::XmlVersion;
 
-use super::{
-    ReadError, ReadKind,
-    misc::{parse_eq, skip_ws},
-};
+use super::{ReadError, ReadKind, WS, misc::parse_eq};
 
 pub(super) fn parse_version_info(
     ctx: &mut ParseContext<'_>,
 ) -> parserc::Result<XmlVersion, ReadError> {
-    skip_ws(ctx)?;
+    WS::parse(ctx)?;
 
     ensure_keyword("version")
         .fatal(ReadError::Version(ReadKind::LitVer, ctx.span()))
@@ -42,7 +40,7 @@ pub(super) fn parse_version_info(
 pub(super) fn parse_encoding_decl<'a>(
     ctx: &mut ParseContext<'a>,
 ) -> parserc::Result<Span, ReadError> {
-    skip_ws(ctx)?;
+    WS::parse(ctx)?;
 
     ensure_keyword("encoding").parse(ctx)?;
 
@@ -73,7 +71,7 @@ pub(super) fn parse_encoding_decl<'a>(
 pub(super) fn parse_standalone_decl(
     ctx: &mut ParseContext<'_>,
 ) -> parserc::Result<bool, ReadError> {
-    skip_ws(ctx)?;
+    WS::parse(ctx)?;
 
     ensure_keyword("standalone").parse(ctx)?;
 

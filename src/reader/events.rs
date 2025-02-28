@@ -59,7 +59,7 @@ pub struct PI {
     /// The span of PI target name in the source code.
     pub target: Span,
     /// The span of unparsed content of the PI.
-    pub unparsed: Span,
+    pub unparsed: Option<Span>,
 }
 /// White space.
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]

@@ -73,6 +73,8 @@ pub enum ReadKind {
     NameChar,
     #[error("`Name`")]
     Name,
+    #[error("`local_name`")]
+    LocalName,
     #[error("`SYSTEM` or `PUBLIC`")]
     ExternalType,
     #[error("`white space`")]
@@ -85,4 +87,6 @@ pub enum ReadKind {
     Prefix(&'static str),
     #[error("`suffix({0})`")]
     Suffix(&'static str),
+    #[error("`split({0})`")]
+    Split(&'static str),
 }

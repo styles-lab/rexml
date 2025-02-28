@@ -1,73 +1,83 @@
 use parserc::{
-    ControlFlow, ParseContext, Parser, ParserExt, Span, ensure_keyword, take_till, take_while,
+    ControlFlow, FromSrc, IntoParser, ParseContext, Parser, ParserExt, Span, ensure_keyword,
+    take_till, take_while,
 };
 
-use super::{
-    ReadError, ReadKind,
-    misc::{parse_name, skip_ws},
-};
+use super::{PI, ReadError, ReadKind, WS, misc::parse_name};
 
-pub(super) fn parse_pi(
-    ctx: &mut ParseContext<'_>,
-) -> parserc::Result<(Span, Option<Span>), ReadError> {
-    let start = ctx.span();
-    ensure_keyword("<?")
-        .map_err(|_: ReadError| ReadError::PI(ReadKind::Prefix("<?"), start))
-        .parse(ctx)?;
+impl FromSrc for PI {
+    type Error = ReadError;
 
-    let span = ctx.span();
+    fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
+    where
+        Self: Sized,
+    {
+        let start = ctx.span();
+        ensure_keyword("<?")
+            .map_err(|_: ReadError| ReadError::PI(ReadKind::Prefix("<?"), start))
+            .parse(ctx)?;
 
-    let name = parse_name
-        .map_err(|_| ReadError::PI(ReadKind::PITarget, span))
-        .parse(ctx)?;
+        let span = ctx.span();
 
-    // check reserved word `('X' | 'x') ('M' | 'm') ('L' | 'l')`
-    if ctx.as_str(name).to_lowercase() == "xml" {
-        return Err(ControlFlow::Fatal(ReadError::PI(
-            ReadKind::ReservedXml,
-            name,
-        )));
-    }
+        let target = parse_name
+            .map_err(|_| ReadError::PI(ReadKind::PITarget, span))
+            .parse(ctx)?;
 
-    if let Some(_) = skip_ws.ok().parse(ctx)? {
-        let mut content = ctx.span();
-        content.len = 0;
+        // check reserved word `('X' | 'x') ('M' | 'm') ('L' | 'l')`
+        if ctx.as_str(target).to_lowercase() == "xml" {
+            return Err(ControlFlow::Fatal(ReadError::PI(
+                ReadKind::ReservedXml,
+                target,
+            )));
+        }
 
-        while let Some(chars) = take_till(|c| c == '?').parse(ctx)? {
-            content.extend_to_inclusive(chars);
+        if let Some(_) = WS::into_parser().ok().parse(ctx)? {
+            let mut content = ctx.span();
+            content.len = 0;
 
-            let qmarks = take_while(|c| c == '?')
-                .parse(ctx)?
-                .expect("at least one dash `-`");
+            while let Some(chars) = take_till(|c| c == '?').parse(ctx)? {
+                content.extend_to_inclusive(chars);
 
-            assert!(qmarks.len() > 0);
+                let qmarks = take_while(|c| c == '?')
+                    .parse(ctx)?
+                    .expect("at least one dash `-`");
 
-            content = content.extend_to_inclusive(qmarks);
-            let (next, _) = ctx.peek();
+                assert!(qmarks.len() > 0);
 
-            match next {
-                Some('>') => {
-                    content.len -= 1;
-                    ctx.next();
-                    return Ok((name, Some(content)));
+                content = content.extend_to_inclusive(qmarks);
+                let (next, _) = ctx.peek();
+
+                match next {
+                    Some('>') => {
+                        content.len -= 1;
+                        ctx.next();
+
+                        return Ok(Self {
+                            target,
+                            unparsed: Some(content),
+                        });
+                    }
+                    _ => {}
                 }
-                _ => {}
+            }
+
+            if content.len() == 0 {
+                return Err(ControlFlow::Fatal(ReadError::PI(
+                    ReadKind::PIUnparsed,
+                    content,
+                )));
             }
         }
 
-        if content.len() == 0 {
-            return Err(ControlFlow::Fatal(ReadError::PI(
-                ReadKind::PIUnparsed,
-                content,
-            )));
-        }
+        ensure_keyword("?>")
+            .map_err(|_: ReadError| ReadError::PI(ReadKind::Suffix("?>"), start))
+            .parse(ctx)?;
+
+        Ok(Self {
+            target,
+            unparsed: None,
+        })
     }
-
-    ensure_keyword("?>")
-        .map_err(|_: ReadError| ReadError::PI(ReadKind::Suffix("?>"), start))
-        .parse(ctx)?;
-
-    Ok((name, None))
 }
 
 #[cfg(test)]
@@ -79,17 +89,23 @@ mod tests {
     #[test]
     fn test_pi() {
         assert_eq!(
-            parse_pi(&mut ParseContext::from("<?hello?>")),
-            Ok((Span::new(2, 5, 1, 3), None))
+            PI::parse(&mut ParseContext::from("<?hello?>")),
+            Ok(PI {
+                target: Span::new(2, 5, 1, 3),
+                unparsed: None
+            })
         );
 
         assert_eq!(
-            parse_pi(&mut ParseContext::from("<?hello world? > ?>")),
-            Ok((Span::new(2, 5, 1, 3), Some(Span::new(8, 9, 1, 9))))
+            PI::parse(&mut ParseContext::from("<?hello world? > ?>")),
+            Ok(PI {
+                target: Span::new(2, 5, 1, 3),
+                unparsed: Some(Span::new(8, 9, 1, 9))
+            })
         );
 
         assert_eq!(
-            parse_pi(&mut ParseContext::from("<?hello ?>")),
+            PI::parse(&mut ParseContext::from("<?hello ?>")),
             Err(ControlFlow::Fatal(ReadError::PI(
                 ReadKind::PIUnparsed,
                 Span::new(8, 0, 1, 9)

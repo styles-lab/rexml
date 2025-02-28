@@ -1,24 +1,30 @@
 use parserc::{
-    ControlFlow, FromSrc, ParseContext, Parser, ParserExt, Span, ensure_char, ensure_char_if,
-    ensure_keyword, take_till, take_while,
+    ControlFlow, FromSrc, IntoParser, ParseContext, Parser, ParserExt, Span, ensure_char,
+    ensure_char_if, ensure_keyword, take_till, take_while,
 };
 
-use super::{ReadError, ReadKind, pi::parse_pi};
+use super::{Comment, Name, PI, ReadError, ReadEvent, ReadKind, WS};
 
-pub(super) fn skip_ws(ctx: &mut ParseContext<'_>) -> parserc::Result<Span, ReadError> {
-    let span = take_while(|c| c.is_whitespace())
-        .parse(ctx)?
-        .ok_or(ControlFlow::Recoverable(ReadError::Ws(ctx.span())))?;
+impl FromSrc for WS {
+    type Error = ReadError;
+    fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
+    where
+        Self: Sized,
+    {
+        let span = take_while(|c| c.is_whitespace())
+            .parse(ctx)?
+            .ok_or(ControlFlow::Recoverable(ReadError::Ws(ctx.span())))?;
 
-    Ok(span)
+        Ok(Self(span))
+    }
 }
 
 pub(super) fn parse_eq(ctx: &mut ParseContext<'_>) -> parserc::Result<Span, ReadError> {
-    skip_ws.ok().parse(ctx)?;
+    WS::into_parser().ok().parse(ctx)?;
     let span = ensure_char('=')
         .fatal(ReadError::Eq(ctx.span()))
         .parse(ctx)?;
-    skip_ws.ok().parse(ctx)?;
+    WS::into_parser().ok().parse(ctx)?;
     Ok(span)
 }
 
@@ -57,50 +63,57 @@ where
     }
 }
 
-pub(super) fn parse_comment(ctx: &mut ParseContext<'_>) -> parserc::Result<Span, ReadError> {
-    let start = ctx.span();
+impl FromSrc for Comment {
+    type Error = ReadError;
 
-    ensure_keyword("<!--")
-        .map_err(|_: ReadError| ReadError::Comment(ReadKind::Prefix("<!--"), start))
-        .parse(ctx)?;
+    fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
+    where
+        Self: Sized,
+    {
+        let start = ctx.span();
 
-    let mut content = ctx.span();
-    content.len = 0;
+        ensure_keyword("<!--")
+            .map_err(|_: ReadError| ReadError::Comment(ReadKind::Prefix("<!--"), start))
+            .parse(ctx)?;
 
-    loop {
-        if let Some(chars) = take_till(|c| c == '-').parse(ctx)? {
-            content = content.extend_to_inclusive(chars);
-        }
+        let mut content = ctx.span();
+        content.len = 0;
 
-        let dashes = match take_while(|c| c == '-').parse(ctx)? {
-            Some(dashes) => dashes,
-            _ => {
-                break;
+        loop {
+            if let Some(chars) = take_till(|c| c == '-').parse(ctx)? {
+                content = content.extend_to_inclusive(chars);
             }
-        };
 
-        assert!(dashes.len() > 0);
-
-        content = content.extend_to_inclusive(dashes);
-
-        if dashes.len() > 1 {
-            let (next, _) = ctx.peek();
-
-            match next {
-                Some('>') => {
-                    content.len -= 2;
-                    ctx.next();
-                    return Ok(content);
+            let dashes = match take_while(|c| c == '-').parse(ctx)? {
+                Some(dashes) => dashes,
+                _ => {
+                    break;
                 }
-                _ => {}
+            };
+
+            assert!(dashes.len() > 0);
+
+            content = content.extend_to_inclusive(dashes);
+
+            if dashes.len() > 1 {
+                let (next, _) = ctx.peek();
+
+                match next {
+                    Some('>') => {
+                        content.len -= 2;
+                        ctx.next();
+                        return Ok(Self(content));
+                    }
+                    _ => {}
+                }
             }
         }
-    }
 
-    Err(ControlFlow::Fatal(ReadError::Comment(
-        ReadKind::Suffix("-->"),
-        ctx.span(),
-    )))
+        Err(ControlFlow::Fatal(ReadError::Comment(
+            ReadKind::Suffix("-->"),
+            ctx.span(),
+        )))
+    }
 }
 
 pub(super) fn parse_name(ctx: &mut ParseContext<'_>) -> parserc::Result<Span, ReadError> {
@@ -116,6 +129,51 @@ pub(super) fn parse_name(ctx: &mut ParseContext<'_>) -> parserc::Result<Span, Re
         Ok(start.extend_to_inclusive(chars))
     } else {
         Ok(start)
+    }
+}
+
+impl FromSrc for Name {
+    type Error = ReadError;
+
+    fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
+    where
+        Self: Sized,
+    {
+        let start = ctx.span();
+        let start_char = ensure_char_if(|c| c.is_alphabetic() || c == '_')
+            .map_err(|_: ReadError| ReadError::Name(ReadKind::NameStartChar, start))
+            .parse(ctx)?;
+
+        let prefix =
+            take_while(|c| c == '_' || c == '-' || c == '.' || c.is_alphanumeric()).parse(ctx)?;
+
+        let prefix = if let Some(prefix) = prefix {
+            start_char.extend_to_inclusive(prefix)
+        } else {
+            start_char
+        };
+
+        let start = ctx.span();
+
+        if let Some(split) = ensure_char(':').ok().parse(ctx)? {
+            let local_name =
+                take_while(|c| c == '_' || c == '-' || c == '.' || c.is_alphanumeric())
+                    .parse(ctx)?
+                    .ok_or(ControlFlow::Fatal(ReadError::Name(
+                        ReadKind::LocalName,
+                        ctx.span(),
+                    )))?;
+
+            Ok(Self {
+                prefix: Some(prefix),
+                local_name,
+            })
+        } else {
+            Ok(Self {
+                prefix: None,
+                local_name: prefix,
+            })
+        }
     }
 }
 
@@ -179,17 +237,11 @@ pub(super) fn parse_ref(ctx: &mut ParseContext<'_>) -> parserc::Result<Ref, Read
         .parse(ctx)
 }
 
-pub(super) enum Misc {
-    Comment(Span),
-    PI { name: Span, unparsed: Option<Span> },
-    WS(Span),
-}
-
-pub(super) fn parse_misc(ctx: &mut ParseContext<'_>) -> parserc::Result<Misc, ReadError> {
-    parse_comment
-        .map(|span| Misc::Comment(span))
-        .or(skip_ws.map(|span| Misc::WS(span)))
-        .or(parse_pi.map(|(name, unparsed)| Misc::PI { name, unparsed }))
+pub(super) fn parse_misc(ctx: &mut ParseContext<'_>) -> parserc::Result<ReadEvent, ReadError> {
+    Comment::into_parser()
+        .map(|comment| ReadEvent::Comment(comment))
+        .or(WS::into_parser().map(|ws| ReadEvent::WS(ws)))
+        .or(PI::into_parser().map(|pi| ReadEvent::PI(pi)))
         .parse(ctx)
 }
 
@@ -244,16 +296,16 @@ mod tests {
     #[test]
     fn test_comment() {
         assert_eq!(
-            parse_comment(&mut ParseContext::from("<!------->")),
-            Ok(Span::new(4, 3, 1, 5))
+            Comment::parse(&mut ParseContext::from("<!------->")),
+            Ok(Comment(Span::new(4, 3, 1, 5)))
         );
         assert_eq!(
-            parse_comment(&mut ParseContext::from("<!-- hello--good----->")),
-            Ok(Span::new(4, 15, 1, 5))
+            Comment::parse(&mut ParseContext::from("<!-- hello--good----->")),
+            Ok(Comment(Span::new(4, 15, 1, 5)))
         );
 
         assert_eq!(
-            parse_comment(&mut ParseContext::from("hello--good----->")),
+            Comment::parse(&mut ParseContext::from("hello--good----->")),
             Err(ControlFlow::Recoverable(ReadError::Comment(
                 ReadKind::Prefix("<!--"),
                 Span::new(0, 1, 1, 1)
@@ -261,7 +313,7 @@ mod tests {
         );
 
         assert_eq!(
-            parse_comment(&mut ParseContext::from("<!-- hello--good--")),
+            Comment::parse(&mut ParseContext::from("<!-- hello--good--")),
             Err(ControlFlow::Fatal(ReadError::Comment(
                 ReadKind::Suffix("-->"),
                 Span::new(18, 0, 1, 19)
