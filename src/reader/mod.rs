@@ -6,6 +6,7 @@ pub use events::*;
 
 mod attr;
 mod doctype;
+mod element;
 mod misc;
 mod pi;
 mod xmldecl;
