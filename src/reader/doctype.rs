@@ -1,11 +1,8 @@
-use parserc::{
-    ControlFlow, FromSpan, FromSrc, IntoParser, ParseContext, Parser, ParserExt, Span,
-    ensure_keyword, take_till,
-};
+use parserc::{ControlFlow, FromSrc, ParseContext, Parser, ParserExt, ensure_keyword, take_till};
 
 use crate::reader::{ReadKind, misc::quote};
 
-use super::{DocType, ReadError, WS, XmlDecl};
+use super::{DocType, ReadError};
 
 // #[derive(Debug, PartialEq, Clone, Copy)]
 // pub(super) enum ExternalId {

@@ -1,6 +1,6 @@
 use parserc::{
-    ControlFlow, FromSrc, IntoParser, ParseContext, Parser, ParserExt, Span, ensure_keyword,
-    take_till, take_while,
+    ControlFlow, FromSrc, IntoParser, ParseContext, Parser, ParserExt, ensure_keyword, take_till,
+    take_while,
 };
 
 use super::{Name, PI, ReadError, ReadKind, WS};

@@ -3,7 +3,7 @@ use parserc::{
     ensure_char_if, ensure_keyword, take_till, take_while,
 };
 
-use super::{CData, CharData, Comment, Name, PI, ReadError, ReadEvent, ReadKind, WS};
+use super::{CData, CharData, Comment, Name, ReadError, ReadKind, WS};
 
 impl FromSrc for WS {
     type Error = ReadError;
@@ -137,9 +137,7 @@ impl FromSrc for Name {
             start_char
         };
 
-        let start = ctx.span();
-
-        if let Some(split) = ensure_char(':').ok().parse(ctx)? {
+        if let Some(_) = ensure_char(':').ok().parse(ctx)? {
             let local_name =
                 take_while(|c| c == '_' || c == '-' || c == '.' || c.is_alphanumeric())
                     .parse(ctx)?
@@ -232,14 +230,6 @@ impl FromSrc for Name {
 //     }
 // }
 
-pub(super) fn parse_misc(ctx: &mut ParseContext<'_>) -> parserc::Result<ReadEvent, ReadError> {
-    Comment::into_parser()
-        .map(|comment| ReadEvent::Comment(comment))
-        .or(WS::into_parser().map(|ws| ReadEvent::WS(ws)))
-        .or(PI::into_parser().map(|pi| ReadEvent::PI(pi)))
-        .parse(ctx)
-}
-
 impl FromSrc for CData {
     type Error = ReadError;
 
@@ -268,7 +258,7 @@ impl FromSrc for CData {
             content = content.extend_to_inclusive(chars);
 
             if chars.len() > 1 {
-                let (next, span) = ctx.peek();
+                let (next, _) = ctx.peek();
 
                 if let Some(next) = next {
                     match next {

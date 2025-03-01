@@ -44,6 +44,10 @@ pub enum ReadError {
     Attr(ReadKind, Span),
     #[error("read `CharData` error")]
     CharData,
+    #[error("read `XmlDecl` error, expect {0} {1}")]
+    XmlDecl(ReadKind, Span),
+    #[error("read `Element` error, expect {0} {1}")]
+    Element(ReadKind, Span),
 }
 
 impl ParseError for ReadError {}
@@ -80,7 +84,7 @@ pub enum ReadKind {
     #[error("`SYSTEM` or `PUBLIC`")]
     ExternalType,
     #[error("`white space`")]
-    Ws,
+    WS,
     #[error("`SystemLiteral`")]
     SystemLiteral,
     #[error("`PubIdLiteral`")]

@@ -1,4 +1,4 @@
-use parserc::{FromSrc, ParseContext, Parser, ParserExt, Span};
+use parserc::{FromSrc, ParseContext, Parser, ParserExt};
 
 use crate::reader::{
     Name, ReadKind,

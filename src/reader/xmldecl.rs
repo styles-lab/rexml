@@ -1,11 +1,11 @@
 use parserc::{
-    ControlFlow, FromSrc, ParseContext, Parser, ParserExt, Span, ensure_char, ensure_keyword,
-    take_while,
+    ControlFlow, FromSrc, IntoParser, ParseContext, Parser, ParserExt, Span, ensure_char,
+    ensure_keyword, take_while,
 };
 
 use crate::types::XmlVersion;
 
-use super::{ReadError, ReadKind, WS, misc::parse_eq};
+use super::{ReadError, ReadKind, WS, XmlDecl, misc::parse_eq};
 
 pub(super) fn parse_version_info(
     ctx: &mut ParseContext<'_>,
@@ -94,6 +94,35 @@ pub(super) fn parse_standalone_decl(
         .parse(ctx)?;
 
     Ok(flag)
+}
+
+impl FromSrc for XmlDecl {
+    type Error = ReadError;
+
+    fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
+    where
+        Self: Sized,
+    {
+        ensure_keyword("<?xml").parse(ctx)?;
+
+        let version = parse_version_info(ctx)?;
+
+        let encoding = parse_encoding_decl.ok().parse(ctx)?;
+
+        let standalone = parse_standalone_decl.ok().parse(ctx)?;
+
+        WS::into_parser().ok().parse(ctx)?;
+
+        ensure_keyword("?>")
+            .fatal(ReadError::XmlDecl(ReadKind::Suffix("?>"), ctx.span()))
+            .parse(ctx)?;
+
+        Ok(Self {
+            version,
+            encoding,
+            standalone,
+        })
+    }
 }
 
 #[cfg(test)]

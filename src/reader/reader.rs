@@ -11,7 +11,7 @@ pub fn read_xml<'a, D>(doc: D) -> Result<Vec<ReadEvent>, ReadError>
 where
     ParseContext<'a>: From<D>,
 {
-    let mut ctx: ParseContext<'a> = doc.into();
+    let mut _ctx: ParseContext<'a> = doc.into();
 
     todo!()
 }
