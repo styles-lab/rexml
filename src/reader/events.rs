@@ -33,6 +33,13 @@ pub struct Start {
     pub attrs: Span,
 }
 
+/// A parsed attr name/value pair.
+#[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
+pub struct Attr {
+    pub name: Name,
+    pub value: Span,
+}
+
 /// An parsed `ETag`
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 pub struct End(
