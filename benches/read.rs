@@ -32,6 +32,13 @@ fn quic_xml_read() {
             // exits the loop when reaching end of file
             Ok(Event::Eof) => break,
 
+            Ok(Event::Start(start)) => {
+                start.name().local_name();
+                for attr in start.attributes() {
+                    attr.unwrap();
+                }
+            }
+
             // There are several other `Event`s we do not consider here
             Ok(_) => {
                 // events.push(event.into_owned());

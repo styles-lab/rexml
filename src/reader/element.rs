@@ -64,10 +64,9 @@ pub fn parse_element_end(ctx: &mut ParseContext<'_>) -> parserc::Result<ReadEven
 }
 
 fn parse_content(ctx: &mut ParseContext<'_>) -> parserc::Result<ReadEvent, ReadError> {
-    CharData::into_parser()
-        .map(|c| ReadEvent::CharData(c))
-        .or(parse_element_empty_or_start)
+    parse_element_empty_or_start
         .or(parse_element_end)
+        .or(CharData::into_parser().map(|c| ReadEvent::CharData(c)))
         .or(CData::into_parser().map(|c| ReadEvent::CData(c)))
         .or(PI::into_parser().map(|c| ReadEvent::PI(c)))
         .or(Comment::into_parser().map(|c| ReadEvent::Comment(c)))
