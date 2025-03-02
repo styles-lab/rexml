@@ -1,14 +1,13 @@
 use quick_xml::{Reader, events::Event};
-use rexml::reader::read_xml;
 
 fn main() {
     divan::main();
 }
 
-#[divan::bench(sample_count = 1000)]
-fn rexml_read() {
-    read_xml(include_str!("../spec/cat.svg")).unwrap();
-}
+// #[divan::bench(sample_count = 1000)]
+// fn rexml_read() {
+//     read_xml(include_str!("../spec/cat.svg")).unwrap();
+// }
 
 #[divan::bench(sample_count = 1000)]
 fn xml_dom_read() {

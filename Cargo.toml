@@ -25,6 +25,6 @@ default = []
 reader = []
 writer = []
 
-[[bench]]
-harness = false
-name = "read"
+# [[bench]]
+# harness = false
+# name = "read"
