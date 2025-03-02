@@ -3,12 +3,12 @@ use parserc::{
     ensure_keyword,
 };
 
-use crate::reader::{Attr, ReadKind, WS};
+use crate::reader::{Attr, CData, CharData, Comment, PI, ReadKind, WS};
 
 use super::{Name, ReadError, ReadEvent};
 
 #[allow(unused)]
-pub(super) fn parse_element_start(
+pub(super) fn parse_element_empty_or_start(
     ctx: &mut ParseContext<'_>,
 ) -> parserc::Result<ReadEvent, ReadError> {
     let span = ctx.span();
@@ -53,23 +53,107 @@ pub(super) fn parse_element_start(
     )))
 }
 
+pub fn parse_element_end(ctx: &mut ParseContext<'_>) -> parserc::Result<ReadEvent, ReadError> {
+    let span = ctx.span();
+    ensure_keyword("</")
+        .map_err(|_: Kind| ReadError::Element(ReadKind::Prefix("</"), span))
+        .parse(ctx)?;
+
+    let name = Name::into_parser()
+        .fatal(ReadError::Element(ReadKind::Name, span))
+        .parse(ctx)?;
+
+    WS::into_parser()
+        .ok()
+        .fatal(ReadError::Element(ReadKind::WS, ctx.span()))
+        .parse(ctx)?;
+
+    ensure_char('>')
+        .map_err(|_: Kind| ReadError::Element(ReadKind::Suffix(">"), span))
+        .parse(ctx)?;
+
+    Ok(ReadEvent::ElementEnd(name))
+}
+
+fn parse_content(ctx: &mut ParseContext<'_>) -> parserc::Result<ReadEvent, ReadError> {
+    CharData::into_parser()
+        .map(|c| ReadEvent::CharData(c))
+        .or(parse_element_empty_or_start)
+        .or(parse_element_end)
+        .or(CData::into_parser().map(|c| ReadEvent::CData(c)))
+        .or(PI::into_parser().map(|c| ReadEvent::PI(c)))
+        .or(Comment::into_parser().map(|c| ReadEvent::Comment(c)))
+        .parse(ctx)
+}
+
 #[allow(unused)]
 pub(super) fn parse_element(
     ctx: &mut ParseContext<'_>,
 ) -> parserc::Result<Vec<ReadEvent>, ReadError> {
-    todo!()
+    let mut events = vec![];
+
+    let mut event = parse_element_empty_or_start(ctx)?;
+
+    let mut elem_starts = vec![];
+
+    loop {
+        match &event {
+            ReadEvent::ElementStart { name, attrs: _ } => {
+                elem_starts.push(*name);
+            }
+            ReadEvent::ElementEnd(name) => {
+                if let Some(start_tag) = elem_starts.pop() {
+                    if ctx.as_str(start_tag.local_name) != ctx.as_str(name.local_name) {
+                        return Err(ControlFlow::Fatal(ReadError::Mismatch(start_tag, *name)));
+                    }
+
+                    if let Some(start_tag_prefix) = start_tag.prefix {
+                        if let Some(prefix) = name.prefix {
+                            if ctx.as_str(prefix) != ctx.as_str(start_tag_prefix) {
+                                return Err(ControlFlow::Fatal(ReadError::Mismatch(
+                                    start_tag, *name,
+                                )));
+                            }
+                        } else {
+                            return Err(ControlFlow::Fatal(ReadError::Mismatch(start_tag, *name)));
+                        }
+                    }
+                } else {
+                    return Err(ControlFlow::Fatal(ReadError::HangEndTag(*name)));
+                }
+            }
+            _ => {}
+        }
+
+        events.push(event);
+
+        if elem_starts.is_empty() {
+            return Ok(events);
+        }
+
+        if let Some(e) = parse_content.ok().parse(ctx)? {
+            event = e;
+        } else {
+            return Err(ControlFlow::Fatal(ReadError::Unclosed(
+                elem_starts,
+                ctx.span(),
+            )));
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use parserc::{ParseContext, Span};
 
-    use crate::reader::{Attr, Name, ReadEvent, element::parse_element_start};
+    use crate::reader::{Attr, CharData, Name, ReadEvent, element::parse_element_empty_or_start};
+
+    use super::parse_element;
 
     #[test]
-    fn test_el() {
+    fn test_el_empty_or_start() {
         assert_eq!(
-            parse_element_start(&mut ParseContext::from(
+            parse_element_empty_or_start(&mut ParseContext::from(
                 r#"<termdef id="dt-dog" term="dog">"#
             )),
             Ok(ReadEvent::ElementStart {
@@ -97,7 +181,7 @@ mod tests {
         );
 
         assert_eq!(
-            parse_element_start(&mut ParseContext::from(
+            parse_element_empty_or_start(&mut ParseContext::from(
                 r#"<termdef id="dt-dog" term="dog" />"#
             )),
             Ok(ReadEvent::EmptyElement {
@@ -122,6 +206,43 @@ mod tests {
                     }
                 ]
             })
+        );
+    }
+
+    #[test]
+    fn test_element() {
+        assert_eq!(
+            parse_element(&mut ParseContext::from("<hello />")),
+            Ok(vec![ReadEvent::EmptyElement {
+                name: Name {
+                    prefix: None,
+                    local_name: Span::new(1, 5, 1, 2)
+                },
+                attrs: vec![]
+            }])
+        );
+
+        assert_eq!(
+            parse_element(&mut ParseContext::from(
+                r#"<g:hello>
+                    hello world
+                   </g:hello> 
+                "#
+            )),
+            Ok(vec![
+                ReadEvent::ElementStart {
+                    name: Name {
+                        prefix: Some(Span::new(1, 1, 1, 2)),
+                        local_name: Span::new(3, 5, 1, 4)
+                    },
+                    attrs: vec![]
+                },
+                ReadEvent::CharData(CharData(Span::new(9, 52, 1, 10))),
+                ReadEvent::ElementEnd(Name {
+                    prefix: Some(Span::new(63, 1, 3, 22)),
+                    local_name: Span::new(65, 5, 3, 24)
+                }),
+            ])
         );
     }
 }

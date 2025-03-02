@@ -1,5 +1,7 @@
 use parserc::{ParseError, Span};
 
+use super::Name;
+
 /// Error type returns by [`read_xml`]
 #[derive(Debug, thiserror::Error, Clone, PartialEq)]
 pub enum ReadError {
@@ -48,6 +50,12 @@ pub enum ReadError {
     XmlDecl(ReadKind, Span),
     #[error("read `Element` error, expect {0} {1}")]
     Element(ReadKind, Span),
+    #[error("unclosed element content, {0:?} {1}")]
+    Unclosed(Vec<Name>, Span),
+    #[error("expect element end tag {0:?}, but got {1:?}")]
+    Mismatch(Name, Name),
+    #[error("Corresponding start tag not found: {0:?}")]
+    HangEndTag(Name),
 }
 
 impl ParseError for ReadError {}
@@ -95,7 +103,6 @@ pub enum ReadKind {
     Suffix(&'static str),
     #[error("`split({0})`")]
     Split(&'static str),
-
     #[error("`=`")]
     Eq,
 }
