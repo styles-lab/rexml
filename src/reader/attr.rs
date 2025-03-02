@@ -9,12 +9,12 @@ use super::{Attr, ReadError, Start};
 
 impl Start {
     /// Create an attribute list iterator [`Attrs`].
-    pub fn attrs<'a, S>(&self, ctx: S) -> Attrs<'a>
+    pub fn attrs<'a, S>(&self, source: S) -> Attrs<'a>
     where
         S: FromSpan<'a>,
     {
         Attrs {
-            ctx: ctx.from_span(self.attrs).into(),
+            ctx: source.from_span(self.attrs).into(),
         }
     }
 }

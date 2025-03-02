@@ -20,8 +20,7 @@ enum ReadState {
     Eof,
 }
 
-/// An iterator/parser of xml document sections.
-
+/// An iterator/parser of xml document entities.
 pub struct Reader<'a> {
     ctx: ParseContext<'a>,
     state: ReadState,
@@ -29,6 +28,7 @@ pub struct Reader<'a> {
 }
 
 impl<'a> Reader<'a> {
+    /// Create a new iterator from [`ParseContext`]
     pub fn new<S>(ctx: S) -> Self
     where
         ParseContext<'a>: From<S>,

@@ -24,7 +24,7 @@ pub struct XmlDecl {
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 pub struct DocType(pub Span);
 
-/// A parsed `EmptyElemTag` or `STag` with unparsed attr list.
+/// A partial parsed `EmptyElemTag/STag` with unparsed attrs field.
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 pub struct Start {
     /// The name of the stag.
@@ -59,7 +59,7 @@ pub struct CData(pub Span);
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 pub struct WS(pub Span);
 
-/// An parsed `cdata` with unparsed reference entities.
+/// A partial parsed `cdata` with unparsed reference entities.
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 pub struct CharData(pub Span);
 

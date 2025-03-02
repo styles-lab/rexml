@@ -1,5 +1,5 @@
 use parserc::{
-    ControlFlow, FromSrc, IntoParser, ParseContext, Parser, ParserExt, Span, ensure_char,
+    ControlFlow, FromSpan, FromSrc, IntoParser, ParseContext, Parser, ParserExt, Span, ensure_char,
     ensure_char_if, ensure_keyword, take_till, take_while,
 };
 
@@ -131,6 +131,46 @@ impl FromSrc for Name {
         } else {
             Ok(Name(start_char))
         }
+    }
+}
+
+impl Name {
+    /// Convert name as `prefix` and `local_name` parts.
+    pub fn as_parts<'a, S>(&self, source: S) -> (Option<&'a str>, &'a str)
+    where
+        S: FromSpan<'a>,
+    {
+        let mut ctx = ParseContext::from(source.from_span(self.0));
+
+        fn split(ctx: &mut ParseContext<'_>) -> parserc::Result<(Option<Span>, Span), ReadError> {
+            let prefix = take_till(|c| c == ':').parse(ctx)?;
+
+            let (next, _) = ctx.next();
+
+            if let Some(next) = next {
+                assert_eq!(next, ':');
+
+                let mut local_name = ctx.span();
+
+                local_name.len = ctx.remaining();
+
+                Ok((prefix, local_name))
+            } else {
+                Ok((None, prefix.expect("Name length is zero")))
+            }
+        }
+
+        let (prefx, local_name) = split(&mut ctx).unwrap();
+
+        (prefx.map(|v| ctx.as_str(v)), ctx.as_str(local_name))
+    }
+
+    /// Convert name into `prefix` and `local_name` parts.
+    pub fn into_parts<'a, S>(self, source: S) -> (Option<&'a str>, &'a str)
+    where
+        S: FromSpan<'a>,
+    {
+        self.as_parts(source)
     }
 }
 
@@ -409,6 +449,24 @@ mod tests {
                 ReadKind::PIBody,
                 Span::new(8, 0, 1, 9)
             )))
+        );
+    }
+
+    #[test]
+    fn test_name_as_parts() {
+        assert_eq!(
+            Name(Span::new(0, 13, 1, 1)).as_parts("a:hello:hello"),
+            (Some("a"), "hello:hello")
+        );
+
+        assert_eq!(
+            Name(Span::new(0, 12, 1, 1)).as_parts(":hello:hello"),
+            (None, "hello:hello")
+        );
+
+        assert_eq!(
+            Name(Span::new(0, 6, 1, 1)).as_parts("hello:"),
+            (Some("hello"), "")
         );
     }
 }
