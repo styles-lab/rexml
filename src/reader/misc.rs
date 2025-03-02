@@ -226,10 +226,10 @@ impl FromSrc for CharData {
 }
 
 pub(super) fn parse_misc(ctx: &mut ParseContext<'_>) -> parserc::Result<ReadEvent, ReadError> {
-    Comment::into_parser()
-        .map(|v| ReadEvent::Comment(v))
+    WS::into_parser()
+        .map(|v| ReadEvent::WS(v))
+        .or(Comment::into_parser().map(|v| ReadEvent::Comment(v)))
         .or(PI::into_parser().map(|v| ReadEvent::PI(v)))
-        .or(WS::into_parser().map(|v| ReadEvent::WS(v)))
         .parse(ctx)
 }
 

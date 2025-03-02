@@ -17,8 +17,9 @@ thiserror = "^2"
 [dev-dependencies]
 divan = {version = "^0.1"}
 pretty_env_logger = {version = "^0.5"}
-quick-xml = "^0.37"
+quick-xml = "0.37.2"
 serde_json = {version = "^1"}
+xml_dom = "0.2.8"
 [features]
 default = []
 reader = []
@@ -27,3 +28,6 @@ writer = []
 [[bench]]
 harness = false
 name = "read"
+
+[profile.bench]
+debug = true

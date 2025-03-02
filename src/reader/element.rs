@@ -18,26 +18,17 @@ pub(super) fn parse_element_empty_or_start(
 
     let name = Name::parse(ctx)?;
 
-    WS::into_parser()
-        .ok()
-        .fatal(ReadError::Element(ReadKind::WS, ctx.span()))
-        .parse(ctx)?;
+    WS::into_parser().ok().parse(ctx)?;
 
     let mut attrs = vec![];
 
     while let Some(attr) = Attr::into_parser().ok().parse(ctx)? {
         attrs.push(attr);
 
-        WS::into_parser()
-            .ok()
-            .fatal(ReadError::Element(ReadKind::WS, ctx.span()))
-            .parse(ctx)?;
+        WS::into_parser().ok().parse(ctx)?;
     }
 
-    WS::into_parser()
-        .ok()
-        .fatal(ReadError::Element(ReadKind::WS, ctx.span()))
-        .parse(ctx)?;
+    WS::into_parser().ok().parse(ctx)?;
 
     if let Some(_) = ensure_keyword(">").ok().parse(ctx)? {
         return Ok(ReadEvent::ElementStart { name, attrs });
@@ -63,10 +54,7 @@ pub fn parse_element_end(ctx: &mut ParseContext<'_>) -> parserc::Result<ReadEven
         .fatal(ReadError::Element(ReadKind::Name, span))
         .parse(ctx)?;
 
-    WS::into_parser()
-        .ok()
-        .fatal(ReadError::Element(ReadKind::WS, ctx.span()))
-        .parse(ctx)?;
+    WS::into_parser().ok().parse(ctx)?;
 
     ensure_char('>')
         .map_err(|_: Kind| ReadError::Element(ReadKind::Suffix(">"), span))

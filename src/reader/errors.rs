@@ -91,8 +91,8 @@ pub enum ReadKind {
     LocalName,
     #[error("`SYSTEM` or `PUBLIC`")]
     ExternalType,
-    #[error("`white space`")]
-    WS,
+    // #[error("`white space`")]
+    // WS,
     #[error("`SystemLiteral`")]
     SystemLiteral,
     #[error("`PubIdLiteral`")]

@@ -7,15 +7,19 @@ fn main() {
 
 #[divan::bench]
 fn rexml_read() {
-    read_xml(include_str!("../spec/empty_element.xml")).unwrap();
+    read_xml(include_str!("../spec/cat.svg")).unwrap();
+}
+
+#[divan::bench]
+fn xml_dom_read() {
+    xml_dom::parser::read_xml(include_str!("../spec/cat.svg")).unwrap();
 }
 
 #[divan::bench]
 fn quic_xml_read() {
-    let mut reader = Reader::from_str(include_str!("../spec/empty_element.xml"));
-    reader.config_mut().trim_text(true);
+    let mut reader = Reader::from_str(include_str!("../spec/cat.svg"));
 
-    let mut txt = Vec::new();
+    // let mut events = Vec::new();
     let mut buf = Vec::new();
 
     // The `Reader` does not implement `Iterator` because it outputs borrowed data (`Cow`s)
@@ -28,18 +32,10 @@ fn quic_xml_read() {
             // exits the loop when reaching end of file
             Ok(Event::Eof) => break,
 
-            Ok(Event::Start(e)) => match e.name().as_ref() {
-                b"tag1" => println!(
-                    "attributes values: {:?}",
-                    e.attributes().map(|a| a.unwrap().value).collect::<Vec<_>>()
-                ),
-                b"tag2" => {}
-                _ => (),
-            },
-            Ok(Event::Text(e)) => txt.push(e.unescape().unwrap().into_owned()),
-
             // There are several other `Event`s we do not consider here
-            _ => (),
+            Ok(_) => {
+                // events.push(event.into_owned());
+            }
         }
         // if we don't keep a borrow elsewhere, we can clear the buffer to keep memory usage low
         buf.clear();
