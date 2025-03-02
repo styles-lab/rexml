@@ -14,3 +14,6 @@ mod doctype;
 mod element;
 mod misc;
 mod xmldecl;
+
+mod attr;
+pub use attr::*;

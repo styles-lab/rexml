@@ -7,7 +7,6 @@ use super::{
     CData, CharData, Comment, End, Name, PI, ReadError, ReadEvent, ReadKind, Start, WS, misc::quote,
 };
 
-#[allow(unused)]
 pub(super) fn parse_element_empty_or_start(
     ctx: &mut ParseContext<'_>,
 ) -> parserc::Result<ReadEvent, ReadError> {
@@ -27,7 +26,7 @@ pub(super) fn parse_element_empty_or_start(
         take_till(|c| c == '"' || c == '\'' || c == '>' || c == '/').parse(ctx)?
     {
         attrs = attrs.extend_to_inclusive(span);
-        let (next, span) = ctx.peek();
+        let (next, _) = ctx.peek();
 
         if let Some(next) = next {
             match next {

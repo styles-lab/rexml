@@ -8,7 +8,6 @@ use crate::reader::{
 
 use super::{ReadError, ReadEvent};
 
-#[allow(unused)]
 enum ReadState {
     Init,
     XmlDecl,
@@ -22,7 +21,7 @@ enum ReadState {
 }
 
 /// An iterator/parser of xml document sections.
-#[allow(unused)]
+
 pub struct Reader<'a> {
     ctx: ParseContext<'a>,
     state: ReadState,
