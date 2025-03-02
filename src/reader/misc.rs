@@ -3,21 +3,7 @@ use parserc::{
     ensure_char_if, ensure_keyword, take_till, take_while,
 };
 
-use super::{CData, CharData, Comment, Name, ReadError, ReadKind, WS};
-
-impl FromSrc for WS {
-    type Error = ReadError;
-    fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
-    where
-        Self: Sized,
-    {
-        let span = take_while(|c| c.is_whitespace())
-            .parse(ctx)?
-            .ok_or(ControlFlow::Recoverable(ReadError::Ws(ctx.span())))?;
-
-        Ok(Self(span))
-    }
-}
+use super::{CData, CharData, Comment, Name, PI, ReadError, ReadEvent, ReadKind, WS};
 
 pub(super) fn parse_eq(ctx: &mut ParseContext<'_>) -> parserc::Result<Span, ReadError> {
     WS::into_parser().ok().parse(ctx)?;
@@ -60,6 +46,20 @@ where
                 )));
             }
         }
+    }
+}
+
+impl FromSrc for WS {
+    type Error = ReadError;
+    fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
+    where
+        Self: Sized,
+    {
+        let span = take_while(|c| c.is_whitespace())
+            .parse(ctx)?
+            .ok_or(ControlFlow::Recoverable(ReadError::Ws(ctx.span())))?;
+
+        Ok(Self(span))
     }
 }
 
@@ -159,77 +159,6 @@ impl FromSrc for Name {
     }
 }
 
-// impl FromSrc for CharRef {
-//     type Error = ReadError;
-
-//     fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
-//     where
-//         Self: Sized,
-//     {
-//         let start = ctx.span();
-//         let hex = ensure_keyword("&#")
-//             .map(|_| false)
-//             .or(ensure_keyword("&#x").map(|_| true))
-//             .map_err(|_: ReadError| ReadError::CharRef(ReadKind::Prefix("&# or &#x"), start))
-//             .parse(ctx)?;
-
-//         let value = if hex {
-//             take_while(|c| c.is_ascii_hexdigit()).parse(ctx)?
-//         } else {
-//             take_while(|c| c.is_ascii_digit()).parse(ctx)?
-//         };
-
-//         let value = value.ok_or(ControlFlow::Fatal(ReadError::CharRef(
-//             ReadKind::LitNum,
-//             ctx.span(),
-//         )))?;
-
-//         if hex {
-//             Ok(CharRef::Digit(value))
-//         } else {
-//             Ok(CharRef::HexDigit(value))
-//         }
-//     }
-// }
-
-// impl FromSrc for EntityRef {
-//     type Error = ReadError;
-
-//     fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
-//     where
-//         Self: Sized,
-//     {
-//         let start = ctx.span();
-//         ensure_char('&')
-//             .map_err(|_: ReadError| ReadError::EntityRef(ReadKind::Prefix("%"), start))
-//             .parse(ctx)?;
-
-//         let name = Name::into_parser()
-//             .fatal(ReadError::EntityRef(ReadKind::Name, ctx.span()))
-//             .parse(ctx)?;
-
-//         ensure_char(';')
-//             .fatal(ReadError::EntityRef(ReadKind::Suffix(";"), ctx.span()))
-//             .parse(ctx)?;
-
-//         Ok(Self(name))
-//     }
-// }
-
-// impl FromSrc for Ref {
-//     type Error = ReadError;
-
-//     fn parse(ctx: &mut ParseContext<'_>) -> parserc::Result<Self, Self::Error>
-//     where
-//         Self: Sized,
-//     {
-//         EntityRef::into_parser()
-//             .map(|v| Ref::EntityRef(v))
-//             .or(CharRef::into_parser().map(|v| Ref::CharRef(v)))
-//             .parse(ctx)
-//     }
-// }
-
 impl FromSrc for CData {
     type Error = ReadError;
 
@@ -294,6 +223,26 @@ impl FromSrc for CharData {
 
         Ok(Self(span))
     }
+}
+
+pub(super) fn parse_misc(ctx: &mut ParseContext<'_>) -> parserc::Result<ReadEvent, ReadError> {
+    Comment::into_parser()
+        .map(|v| ReadEvent::Comment(v))
+        .or(PI::into_parser().map(|v| ReadEvent::PI(v)))
+        .or(WS::into_parser().map(|v| ReadEvent::WS(v)))
+        .parse(ctx)
+}
+
+#[allow(unused)]
+pub(super) fn parse_miscs(
+    ctx: &mut ParseContext<'_>,
+) -> parserc::Result<Vec<ReadEvent>, ReadError> {
+    let mut events = vec![];
+    while let Some(event) = parse_misc.ok().parse(ctx)? {
+        events.push(event);
+    }
+
+    Ok(events)
 }
 
 #[cfg(test)]

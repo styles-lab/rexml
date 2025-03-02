@@ -15,10 +15,15 @@ serde = {version = "^1", optional = true}
 thiserror = "^2"
 
 [dev-dependencies]
+divan = {version = "^0.1"}
 pretty_env_logger = {version = "^0.5"}
+quick-xml = "^0.37"
 serde_json = {version = "^1"}
-
 [features]
 default = []
 reader = []
 writer = []
+
+[[bench]]
+harness = false
+name = "read"
