@@ -146,7 +146,9 @@ pub(super) fn parse_element(
 mod tests {
     use parserc::{ParseContext, Span};
 
-    use crate::reader::{Attr, CharData, Name, ReadEvent, element::parse_element_empty_or_start};
+    use crate::reader::{
+        Attr, CData, CharData, Comment, Name, PI, ReadEvent, element::parse_element_empty_or_start,
+    };
 
     use super::parse_element;
 
@@ -226,6 +228,9 @@ mod tests {
             parse_element(&mut ParseContext::from(
                 r#"<g:hello>
                     hello world
+                    <!---hello world-->
+                    <?xxxx target?>
+                    <![CDATA[ <<]]>
                    </g:hello> 
                 "#
             )),
@@ -237,10 +242,22 @@ mod tests {
                     },
                     attrs: vec![]
                 },
-                ReadEvent::CharData(CharData(Span::new(9, 52, 1, 10))),
+                ReadEvent::CharData(CharData(Span::new(9, 53, 1, 10))),
+                ReadEvent::Comment(Comment(Span::new(66, 12, 3, 25))),
+                ReadEvent::CharData(CharData(Span::new(81, 21, 3, 40))),
+                ReadEvent::PI(PI {
+                    target: Name {
+                        prefix: None,
+                        local_name: Span::new(104, 4, 4, 23)
+                    },
+                    unparsed: Some(Span::new(109, 6, 4, 28))
+                }),
+                ReadEvent::CharData(CharData(Span::new(117, 21, 4, 36))),
+                ReadEvent::CData(CData(Span::new(147, 3, 5, 30))),
+                ReadEvent::CharData(CharData(Span::new(153, 20, 5, 36))),
                 ReadEvent::ElementEnd(Name {
-                    prefix: Some(Span::new(63, 1, 3, 22)),
-                    local_name: Span::new(65, 5, 3, 24)
+                    prefix: Some(Span::new(175, 1, 6, 22)),
+                    local_name: Span::new(177, 5, 6, 24)
                 }),
             ])
         );
