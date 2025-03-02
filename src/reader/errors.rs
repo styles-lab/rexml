@@ -45,7 +45,7 @@ pub enum ReadError {
 
     /// Types of error that can be raised when parsing `whitespace`
     #[error("Expect whitespace.")]
-    WS,
+    WS(Span),
 
     /// Types of error that can be raised when parsing `quote string`
     #[error("Parse `quote` error: {0} {1}")]
