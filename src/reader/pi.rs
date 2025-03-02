@@ -26,7 +26,7 @@ impl FromSrc for PI {
         // check reserved word `('X' | 'x') ('M' | 'm') ('L' | 'l')`
         if ctx.as_str(target.local_name).to_lowercase() == "xml" {
             return Err(ControlFlow::Fatal(ReadError::PI(
-                ReadKind::ReservedXml,
+                ReadKind::Reserved,
                 target.local_name,
             )));
         }

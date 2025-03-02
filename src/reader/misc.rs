@@ -57,7 +57,7 @@ impl FromSrc for WS {
     {
         let span = take_while(|c| c.is_whitespace())
             .parse(ctx)?
-            .ok_or(ControlFlow::Recoverable(ReadError::Ws(ctx.span())))?;
+            .ok_or(ControlFlow::Recoverable(ReadError::WS(ctx.span())))?;
 
         Ok(Self(span))
     }

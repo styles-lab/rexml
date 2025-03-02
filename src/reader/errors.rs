@@ -14,7 +14,7 @@ pub enum ReadError {
     #[error("read `encoding` error, expect {0} {1}")]
     Encoding(ReadKind, Span),
     #[error("read `ws` error {0}")]
-    Ws(Span),
+    WS(Span),
     #[error("read `eq` error {0}")]
     Eq(Span),
     #[error("read `comment` error, expect {0} {1}")]
@@ -27,19 +27,10 @@ pub enum ReadError {
     Name(ReadKind, Span),
     #[error("read `quote literal string` error, expect {0} {1}")]
     Quote(ReadKind, Span),
-
-    #[error("read `external-id` error, expect {0} {1}")]
-    ExternalId(ReadKind, Span),
-
-    #[error("read `PEReference` error, expect {0} {1}")]
-    PERef(ReadKind, Span),
-    #[error("read `EntityRef` error, expect {0} {1}")]
-    EntityRef(ReadKind, Span),
     #[error("read `CharRef` error, expect {0} {1}")]
     CharRef(ReadKind, Span),
     #[error("read `DocType` error, expect {0} {1}")]
     DocType(ReadKind, Span),
-
     #[error("read `CData` error, expect {0} {1}")]
     CData(ReadKind, Span),
     #[error("read `Attr` error, expect {0} {1}")]
@@ -80,7 +71,7 @@ pub enum ReadKind {
     #[error("`PIUnparsed`")]
     PIUnparsed,
     #[error("`('X' | 'x') ('M' | 'm') ('L' | 'l')`")]
-    ReservedXml,
+    Reserved,
     #[error("`NameStartChar`")]
     NameStartChar,
     #[error("`NameChar`")]
