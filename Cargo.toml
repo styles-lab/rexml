@@ -28,6 +28,3 @@ writer = []
 [[bench]]
 harness = false
 name = "read"
-
-[profile.bench]
-debug = true

@@ -5,17 +5,17 @@ fn main() {
     divan::main();
 }
 
-#[divan::bench]
+#[divan::bench(sample_count = 1000)]
 fn rexml_read() {
     read_xml(include_str!("../spec/cat.svg")).unwrap();
 }
 
-#[divan::bench]
+#[divan::bench(sample_count = 1000)]
 fn xml_dom_read() {
     xml_dom::parser::read_xml(include_str!("../spec/cat.svg")).unwrap();
 }
 
-#[divan::bench]
+#[divan::bench(sample_count = 1000)]
 fn quic_xml_read() {
     let mut reader = Reader::from_str(include_str!("../spec/cat.svg"));
 
@@ -38,7 +38,15 @@ fn quic_xml_read() {
                     attr.unwrap();
                 }
             }
-
+            Ok(Event::Empty(empty)) => {
+                empty.name().local_name();
+                for attr in empty.attributes() {
+                    attr.unwrap();
+                }
+            }
+            Ok(Event::End(end)) => {
+                end.name().local_name();
+            }
             // There are several other `Event`s we do not consider here
             Ok(_) => {
                 // events.push(event.into_owned());
