@@ -61,6 +61,7 @@ pub(super) fn parse_element_empty_or_start(
 
 fn parse_element_end(ctx: &mut ParseContext<'_>) -> parserc::Result<ReadEvent, ReadError> {
     let span = ctx.span();
+
     ensure_keyword("</")
         .map_err(|_: Kind| ReadError::EndTag(ReadKind::Prefix("</"), span))
         .parse(ctx)?;

@@ -20,11 +20,12 @@ pretty_env_logger = {version = "^0.5"}
 quick-xml = "0.37.2"
 serde_json = {version = "^1"}
 xml_dom = "0.2.8"
+
 [features]
-default = []
+default = ["reader", "writer"]
 reader = []
 writer = []
 
-# [[bench]]
-# harness = false
-# name = "read"
+[[bench]]
+harness = false
+name = "read"
