@@ -4,12 +4,12 @@ fn main() {
     divan::main();
 }
 
-#[divan::bench(sample_count = 1000)]
-fn rexml_read() {
-    for event in rexml::reader::Reader::new(include_str!("../spec/cat.svg")) {
-        event.expect("");
-    }
-}
+// #[divan::bench(sample_count = 1000)]
+// fn rexml_read() {
+//     for event in rexml::reader::Reader::new(include_str!("../spec/cat.svg")) {
+//         event.expect("");
+//     }
+// }
 
 #[divan::bench(sample_count = 1000)]
 fn xml_dom_read() {
