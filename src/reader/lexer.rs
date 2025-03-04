@@ -13,7 +13,6 @@ pub enum LexerError {
     DocType(XmlSpan),
     #[error("expect `?>`. {0}")]
     PIEnd(XmlSpan),
-
     #[error("expect `/>`. {0}")]
     EmptyTag(XmlSpan),
     #[error("no matching found of `{0}` end tag. {1}")]
