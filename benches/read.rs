@@ -35,13 +35,13 @@ fn quic_xml_read() {
             Ok(Event::Eof) => break,
 
             Ok(Event::Start(start)) => {
-                // start.name().local_name();
+                start.name().local_name();
                 for attr in start.attributes() {
                     attr.unwrap();
                 }
             }
             Ok(Event::Empty(empty)) => {
-                // empty.name().local_name();
+                empty.name().local_name();
                 for attr in empty.attributes() {
                     attr.unwrap();
                 }

@@ -1,59 +1,98 @@
-use std::borrow::Cow;
-
-use parserc::Span;
+use std::{borrow::Cow, fmt::Display};
 
 /// Lexer may raise this error.
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum LexerError {
     #[error("invalid `name` token. {0}")]
-    Name(Span),
+    Name(XmlSpan),
     #[error("no matching found of `]]>` end tag. {0}")]
-    CData(Span),
+    CData(XmlSpan),
     #[error("no matching found of `-->` end tag. {0}")]
-    Comment(Span),
+    Comment(XmlSpan),
     #[error("unclosed doc_type declaration. {0}")]
-    DocType(Span),
+    DocType(XmlSpan),
     #[error("expect `?>`. {0}")]
-    PIEnd(Span),
+    PIEnd(XmlSpan),
 
     #[error("expect `/>`. {0}")]
-    EmptyTag(Span),
+    EmptyTag(XmlSpan),
     #[error("no matching found of `{0}` end tag. {1}")]
-    QuoteStr(char, Span),
+    QuoteStr(char, XmlSpan),
+}
+
+/// Token span in the source code.
+#[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
+pub struct XmlSpan {
+    pub offset: usize,
+    pub len: usize,
+}
+
+impl Display for XmlSpan {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{},{}]", self.offset, self.len)
+    }
+}
+
+impl XmlSpan {
+    /// Extend self to `other`'s start offset.
+    pub fn extend_to(self, other: Self) -> Self {
+        assert!(
+            !(self.offset > other.offset),
+            "extend_to: self.offset < other.offset."
+        );
+
+        Self {
+            offset: self.offset,
+            len: other.offset - self.offset,
+        }
+    }
+
+    /// Extend self to `other`'s end offset.
+    pub fn extend_to_inclusive(self, other: Self) -> Self {
+        assert!(
+            !(self.offset > other.offset),
+            "extend_to: self.offset < other.offset."
+        );
+
+        Self {
+            offset: self.offset,
+            len: other.offset + other.len - self.offset,
+        }
+    }
 }
 
 /// The variant of xml token.
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 pub enum XmlToken {
     /// `<`
-    ElementOpenStartTag(Span),
+    ElementOpenStartTag(XmlSpan),
     /// `</`
-    ElementCloseStartTag(Span),
+    ElementCloseStartTag(XmlSpan),
     /// `>`
-    EndTag(Span),
+    EndTag(XmlSpan),
     /// `/>`
-    EmptyTag(Span),
+    EmptyTag(XmlSpan),
     /// `<?`
-    PIStart(Span),
+    PIStart(XmlSpan),
     /// `?>`
-    PIEnd(Span),
+    PIEnd(XmlSpan),
     /// `<![CDATA[` Cdata `]]>`
-    CData(Span),
+    CData(XmlSpan),
     /// `<!--` Cdata `-->`
-    Comment(Span),
+    Comment(XmlSpan),
     /// (#x20 | #x9 | #xD | #xA)+
-    WS(Span),
+    WS(XmlSpan),
     /// See [`CharData`](https://www.w3.org/TR/xml11/#NT-CharData)
-    CharData(Span),
+    CharData(XmlSpan),
     /// See [`Name`](https://www.w3.org/TR/xml11/#NT-Name)
-    Name(Span),
+    Name(XmlSpan),
     /// '<!DOCTYPE' ... '>'
     /// See [`doctypedecl`](https://www.w3.org/TR/xml11/#NT-doctypedecl)
-    DocType(Span),
+    DocType(XmlSpan),
     /// `"` ... `"` | `'` ... `'`
-    QuoteStr(Span),
+    QuoteStr(XmlSpan),
     /// `=`
-    Eq(Span),
+    Eq(XmlSpan),
 }
 
 /// Read state.
@@ -74,32 +113,37 @@ pub struct XmLexer<'a> {
     /// input xml document fragement.
     input: Cow<'a, str>,
     /// The span of the input xml document fragement.
-    span: Span,
+    span: XmlSpan,
     /// The cursor offset in the fragement.
     offset: usize,
-    /// Current line no. of the read cursor.
-    lines: usize,
-    /// Current column no. of the read cursor.
-    cols: usize,
 }
 
 impl<'a> From<&'a str> for XmLexer<'a> {
     fn from(value: &'a str) -> Self {
-        let span = Span::new(0, value.len(), 1, 1);
+        let span = XmlSpan {
+            offset: 0,
+            len: value.len(),
+        };
         Self::new(value, span)
     }
 }
 
 impl<'a> From<&'a String> for XmLexer<'a> {
     fn from(value: &'a String) -> Self {
-        let span = Span::new(0, value.len(), 1, 1);
+        let span = XmlSpan {
+            offset: 0,
+            len: value.len(),
+        };
         Self::new(value, span)
     }
 }
 
 impl From<String> for XmLexer<'static> {
     fn from(value: String) -> Self {
-        let span = Span::new(0, value.len(), 1, 1);
+        let span = XmlSpan {
+            offset: 0,
+            len: value.len(),
+        };
         Self::new(value, span)
     }
 }
@@ -110,13 +154,6 @@ impl<'a> XmLexer<'a> {
     fn next(&mut self) -> Option<u8> {
         if let Some(c) = self.peek() {
             self.offset += 1;
-
-            if c == b'\n' {
-                self.lines += 1;
-                self.cols = 1;
-            } else {
-                self.cols += 1;
-            }
 
             Some(c)
         } else {
@@ -152,7 +189,7 @@ impl<'a> XmLexer<'a> {
 
         let span = start.extend_to(self.next_span());
 
-        if span.len() > 0 {
+        if span.len > 0 {
             Some(XmlToken::WS(span))
         } else {
             None
@@ -201,7 +238,7 @@ impl<'a> XmLexer<'a> {
 
         self.state = XmLexerState::Markup;
 
-        if span.len() > 0 {
+        if span.len > 0 {
             Some(XmlToken::CharData(span))
         } else {
             None
@@ -224,7 +261,7 @@ impl<'a> XmLexer<'a> {
         start.offset += 9;
         start.len = 0;
 
-        self.seek(start);
+        self.seek(start.offset);
 
         while let Some(c) = self.next() {
             if c == b']' {
@@ -238,7 +275,7 @@ impl<'a> XmLexer<'a> {
 
                         markers = markers.extend_to(end);
 
-                        if markers.len() > 2 && c == b'>' {
+                        if markers.len > 2 && c == b'>' {
                             markers.len -= 3;
                             self.state = XmLexerState::CharData;
                             return Ok(Some(XmlToken::CData(start.extend_to_inclusive(markers))));
@@ -269,7 +306,7 @@ impl<'a> XmLexer<'a> {
         start.offset += 4;
         start.len = 0;
 
-        self.seek(start);
+        self.seek(start.offset);
 
         while let Some(c) = self.next() {
             if c == b'-' {
@@ -283,7 +320,7 @@ impl<'a> XmLexer<'a> {
 
                         markers = markers.extend_to(end);
 
-                        if markers.len() > 2 && c == b'>' {
+                        if markers.len > 2 && c == b'>' {
                             markers.len -= 3;
                             self.state = XmLexerState::CharData;
                             return Ok(Some(XmlToken::Comment(start.extend_to_inclusive(markers))));
@@ -338,7 +375,7 @@ impl<'a> XmLexer<'a> {
         start.offset += 9;
         start.len = 0;
 
-        self.seek(start);
+        self.seek(start.offset);
 
         let mut unclosed = 1;
 
@@ -381,10 +418,7 @@ impl<'a> XmLexer<'a> {
         let mut span = self.next_span();
         span.len = 2;
 
-        let mut seek = self.next_span();
-        seek.offset += 2;
-
-        self.seek(seek);
+        self.seek(span.offset + 2);
 
         Some(XmlToken::PIStart(span))
     }
@@ -401,10 +435,7 @@ impl<'a> XmLexer<'a> {
         let mut span = self.next_span();
         span.len = 2;
 
-        let mut seek = self.next_span();
-        seek.offset += 2;
-
-        self.seek(seek);
+        self.seek(span.offset + 2);
 
         Ok(XmlToken::PIEnd(span))
     }
@@ -421,10 +452,7 @@ impl<'a> XmLexer<'a> {
         let mut span = self.next_span();
         span.len = 2;
 
-        let mut seek = self.next_span();
-        seek.offset += 2;
-
-        self.seek(seek);
+        self.seek(span.offset + 2);
 
         Some(XmlToken::ElementCloseStartTag(span))
     }
@@ -441,10 +469,7 @@ impl<'a> XmLexer<'a> {
         let mut span = self.next_span();
         span.len = 2;
 
-        let mut seek = self.next_span();
-        seek.offset += 2;
-
-        self.seek(seek);
+        self.seek(span.offset + 2);
 
         Ok(XmlToken::EmptyTag(span))
     }
@@ -452,20 +477,18 @@ impl<'a> XmLexer<'a> {
 
 impl<'a> XmLexer<'a> {
     /// Create a new `XmLexer` with code `Span`.
-    pub fn new<C>(input: C, span: Span) -> Self
+    pub fn new<C>(input: C, span: XmlSpan) -> Self
     where
         Cow<'a, str>: From<C>,
     {
         let input: Cow<'a, str> = input.into();
 
-        assert_eq!(input.len(), span.len(), "Must: input::len == span::len");
+        assert_eq!(input.len(), span.len, "Must: input::len == span::len");
         Self {
             state: XmLexerState::Markup,
             input,
             span,
             offset: 0,
-            lines: span.lines,
-            cols: span.cols,
         }
     }
 
@@ -536,20 +559,16 @@ impl<'a> XmLexer<'a> {
     /// Returns the span of next byte in the source code.
     ///
     /// The `len` of the returned `Span` is zero, if `eof` is reached.
-    pub fn next_span(&self) -> Span {
-        Span {
+    pub fn next_span(&self) -> XmlSpan {
+        XmlSpan {
             offset: self.span.offset + self.offset,
             len: if self.remaining() > 0 { 1 } else { 0 },
-            lines: self.lines,
-            cols: self.cols,
         }
     }
 
     /// Move the read cursor to the span's start position.
-    pub fn seek(&mut self, span: Span) {
-        self.offset = span.offset - self.span.offset;
-        self.lines = span.lines;
-        self.cols = span.cols;
+    pub fn seek(&mut self, offset: usize) {
+        self.offset = offset - self.span.offset;
     }
 
     /// Iterate over the source code and returns next token.
@@ -639,9 +658,7 @@ fn is_markup_char(c: u8) -> bool {
 mod tests {
     use std::panic::catch_unwind;
 
-    use parserc::Span;
-
-    use crate::reader::lexer::{LexerError, XmLexerState, XmlToken};
+    use crate::reader::lexer::{LexerError, XmLexerState, XmlSpan, XmlToken};
 
     use super::{XmLexer, is_ws};
 
@@ -692,28 +709,31 @@ mod tests {
 
     #[test]
     fn test_cursor() {
-        let mut lexer = XmLexer::new("x\ny", Span::new(10, 3, 2, 3));
+        let mut lexer = XmLexer::new("x\ny", XmlSpan { offset: 10, len: 3 });
 
-        assert_eq!(lexer.next_span(), Span::new(10, 1, 2, 3));
+        assert_eq!(lexer.next_span(), XmlSpan { offset: 10, len: 1 });
 
         assert_eq!(lexer.next(), Some(b'x'));
         assert_eq!(lexer.next(), Some(b'\n'));
-        assert_eq!(lexer.next_span(), Span::new(12, 1, 3, 1));
+        assert_eq!(lexer.next_span(), XmlSpan { offset: 12, len: 1 });
         assert_eq!(lexer.next(), Some(b'y'));
-        assert_eq!(lexer.next_span(), Span::new(13, 0, 3, 2));
+        assert_eq!(lexer.next_span(), XmlSpan { offset: 13, len: 0 });
 
-        lexer.seek(Span::new(10, 1, 2, 3));
+        lexer.seek(10);
 
         assert_eq!(lexer.next(), Some(b'x'));
 
-        catch_unwind(move || lexer.seek(Span::new(9, 1, 2, 3))).expect_err("overflow");
+        catch_unwind(move || lexer.seek(9)).expect_err("overflow");
     }
 
     #[test]
     fn test_next_ws() {
         let mut lexer = XmLexer::from("  ");
 
-        assert_eq!(lexer.next_ws(), Some(XmlToken::WS(Span::new(0, 2, 1, 1))));
+        assert_eq!(
+            lexer.next_ws(),
+            Some(XmlToken::WS(XmlSpan { offset: 0, len: 2 }))
+        );
 
         assert_eq!(lexer.next_ws(), None);
     }
@@ -722,37 +742,37 @@ mod tests {
     fn test_next_name() {
         assert_eq!(
             XmLexer::from("hell=").next_name(),
-            Ok(XmlToken::Name(Span::new(0, 4, 1, 1)))
+            Ok(XmlToken::Name(XmlSpan { offset: 0, len: 4 }))
         );
 
         assert_eq!(
             XmLexer::from("hell ").next_name(),
-            Ok(XmlToken::Name(Span::new(0, 4, 1, 1)))
+            Ok(XmlToken::Name(XmlSpan { offset: 0, len: 4 }))
         );
 
         assert_eq!(
             XmLexer::from(":hello ").next_name(),
-            Ok(XmlToken::Name(Span::new(0, 6, 1, 1)))
+            Ok(XmlToken::Name(XmlSpan { offset: 0, len: 6 }))
         );
 
         assert_eq!(
             XmLexer::from(".hello ").next_name(),
-            Err(LexerError::Name(Span::new(0, 0, 1, 1)))
+            Err(LexerError::Name(XmlSpan { offset: 0, len: 0 }))
         );
 
         assert_eq!(
             XmLexer::from("-hello ").next_name(),
-            Err(LexerError::Name(Span::new(0, 0, 1, 1)))
+            Err(LexerError::Name(XmlSpan { offset: 0, len: 0 }))
         );
 
         assert_eq!(
             XmLexer::from("<hello ").next_name(),
-            Err(LexerError::Name(Span::new(0, 0, 1, 1)))
+            Err(LexerError::Name(XmlSpan { offset: 0, len: 0 }))
         );
 
         assert_eq!(
             XmLexer::from(" hello ").next_name(),
-            Err(LexerError::Name(Span::new(0, 0, 1, 1)))
+            Err(LexerError::Name(XmlSpan { offset: 0, len: 0 }))
         );
     }
 
@@ -760,14 +780,14 @@ mod tests {
     fn test_next_chardata() {
         assert_eq!(
             XmLexer::from("hell=").with_chardata().next_chardata(),
-            Some(XmlToken::CharData(Span::new(0, 5, 1, 1)))
+            Some(XmlToken::CharData(XmlSpan { offset: 0, len: 5 }))
         );
 
         assert_eq!(XmLexer::from("<").with_chardata().next_chardata(), None);
 
         assert_eq!(
             XmLexer::from("hell <").with_chardata().next_chardata(),
-            Some(XmlToken::CharData(Span::new(0, 5, 1, 1)))
+            Some(XmlToken::CharData(XmlSpan { offset: 0, len: 5 }))
         );
     }
 
@@ -776,21 +796,21 @@ mod tests {
         assert_eq!(XmLexer::from("hell=").next_cdata(), Ok(None));
         assert_eq!(
             XmLexer::from("<![CDATA[").next_cdata(),
-            Err(LexerError::CData(Span::new(9, 0, 1, 1)))
+            Err(LexerError::CData(XmlSpan { offset: 9, len: 0 }))
         );
         assert_eq!(
             XmLexer::from("<![CDATA[\ndfdfd<<<]]]]]").next_cdata(),
-            Err(LexerError::CData(Span::new(9, 0, 1, 1)))
+            Err(LexerError::CData(XmlSpan { offset: 9, len: 0 }))
         );
 
         assert_eq!(
             XmLexer::from("<![CDATA[\ndfdfd<<<]]]]]>").next_cdata(),
-            Ok(Some(XmlToken::CData(Span::new(9, 12, 1, 1))))
+            Ok(Some(XmlToken::CData(XmlSpan { offset: 9, len: 12 })))
         );
 
         assert_eq!(
             XmLexer::from("<![CDATA[ hello  < hll <!--- ]]>").next_cdata(),
-            Ok(Some(XmlToken::CData(Span::new(9, 20, 1, 1))))
+            Ok(Some(XmlToken::CData(XmlSpan { offset: 9, len: 20 })))
         );
     }
 
@@ -799,21 +819,21 @@ mod tests {
         assert_eq!(XmLexer::from("hell=").next_comment(), Ok(None));
         assert_eq!(
             XmLexer::from("<!--").next_comment(),
-            Err(LexerError::Comment(Span::new(4, 0, 1, 1)))
+            Err(LexerError::Comment(XmlSpan { offset: 4, len: 0 }))
         );
         assert_eq!(
             XmLexer::from("<!--\ndfdfd<<<-----").next_comment(),
-            Err(LexerError::Comment(Span::new(4, 0, 1, 1)))
+            Err(LexerError::Comment(XmlSpan { offset: 4, len: 0 }))
         );
 
         assert_eq!(
             XmLexer::from("<!--\ndfdfd<<<---->").next_comment(),
-            Ok(Some(XmlToken::Comment(Span::new(4, 11, 1, 1))))
+            Ok(Some(XmlToken::Comment(XmlSpan { offset: 4, len: 11 })))
         );
 
         assert_eq!(
             XmLexer::from("<!-- hello  < hll <!]]]-->").next_comment(),
-            Ok(Some(XmlToken::Comment(Span::new(4, 19, 1, 1))))
+            Ok(Some(XmlToken::Comment(XmlSpan { offset: 4, len: 19 })))
         );
     }
 
@@ -821,17 +841,17 @@ mod tests {
     fn test_next_quote_str() {
         assert_eq!(
             XmLexer::from("'--\ndfdfd<<<-----").next_quote_str(),
-            Err(LexerError::QuoteStr('\'', Span::new(1, 16, 1, 2)))
+            Err(LexerError::QuoteStr('\'', XmlSpan { offset: 1, len: 16 }))
         );
 
         assert_eq!(
             XmLexer::from("'\ndfdfd<<<--'").next_quote_str(),
-            Ok(XmlToken::QuoteStr(Span::new(1, 11, 1, 2)))
+            Ok(XmlToken::QuoteStr(XmlSpan { offset: 1, len: 11 }))
         );
 
         assert_eq!(
             XmLexer::from("\" hello  < hll <!]]]-->\"").next_quote_str(),
-            Ok(XmlToken::QuoteStr(Span::new(1, 22, 1, 2)))
+            Ok(XmlToken::QuoteStr(XmlSpan { offset: 1, len: 22 }))
         );
     }
 
@@ -840,12 +860,12 @@ mod tests {
         assert_eq!(XmLexer::from("<!DOCTYPE").next_doc_type(), None);
         assert_eq!(
             XmLexer::from("<!DOCTYPE>").next_doc_type(),
-            Some(XmlToken::DocType(Span::new(9, 0, 1, 1)))
+            Some(XmlToken::DocType(XmlSpan { offset: 9, len: 0 }))
         );
 
         assert_eq!(
             XmLexer::from(r#"<!DOCTYPE greeting SYSTEM "hello.dtd">"#).next_doc_type(),
-            Some(XmlToken::DocType(Span::new(9, 28, 1, 1)))
+            Some(XmlToken::DocType(XmlSpan { offset: 9, len: 28 }))
         );
 
         assert_eq!(
@@ -856,7 +876,7 @@ mod tests {
                 "#
             )
             .next_doc_type(),
-            Some(XmlToken::DocType(Span::new(9, 79, 1, 1)))
+            Some(XmlToken::DocType(XmlSpan { offset: 9, len: 79 }))
         );
     }
 }
