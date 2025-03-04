@@ -151,6 +151,7 @@ impl From<String> for XmLexer<'static> {
 #[allow(unused)]
 impl<'a> XmLexer<'a> {
     /// Returns next byte in the source code and move the cursor forward one step.
+    #[inline(always)]
     fn next(&mut self) -> Option<u8> {
         if let Some(c) = self.peek() {
             self.offset += 1;
@@ -162,6 +163,7 @@ impl<'a> XmLexer<'a> {
     }
 
     /// Peek next bytes in the source code, but does not move the read cursor.
+    #[inline(always)]
     fn peek(&mut self) -> Option<u8> {
         if self.offset == self.span.len {
             return None;
@@ -173,6 +175,7 @@ impl<'a> XmLexer<'a> {
     }
 
     /// Read next ws chars.
+    #[inline(always)]
     fn next_ws(&mut self) -> Option<XmlToken> {
         assert_eq!(self.state, XmLexerState::Markup);
 
@@ -197,6 +200,7 @@ impl<'a> XmLexer<'a> {
     }
 
     /// Read next ws chars.
+    #[inline(always)]
     fn next_name(&mut self) -> Result<XmlToken, LexerError> {
         assert_eq!(self.state, XmLexerState::Markup);
 
@@ -220,6 +224,7 @@ impl<'a> XmLexer<'a> {
         Ok(XmlToken::Name(start.extend_to(self.next_span())))
     }
 
+    #[inline(always)]
     fn next_chardata(&mut self) -> Option<XmlToken> {
         assert_eq!(self.state, XmLexerState::CharData);
 
@@ -245,6 +250,7 @@ impl<'a> XmLexer<'a> {
         }
     }
 
+    #[inline(always)]
     fn next_cdata(&mut self) -> Result<Option<XmlToken>, LexerError> {
         assert_eq!(self.state, XmLexerState::Markup);
 
@@ -290,6 +296,7 @@ impl<'a> XmLexer<'a> {
         Err(LexerError::CData(start))
     }
 
+    #[inline(always)]
     fn next_comment(&mut self) -> Result<Option<XmlToken>, LexerError> {
         assert_eq!(self.state, XmLexerState::Markup);
 
@@ -335,6 +342,7 @@ impl<'a> XmLexer<'a> {
         Err(LexerError::Comment(start))
     }
 
+    #[inline(always)]
     fn next_quote_str(&mut self) -> Result<XmlToken, LexerError> {
         assert_eq!(self.state, XmLexerState::Markup);
 
@@ -360,6 +368,7 @@ impl<'a> XmLexer<'a> {
         ))
     }
 
+    #[inline(always)]
     fn next_doc_type(&mut self) -> Option<XmlToken> {
         assert_eq!(self.state, XmLexerState::Markup);
 
@@ -405,6 +414,7 @@ impl<'a> XmLexer<'a> {
         None
     }
 
+    #[inline(always)]
     fn next_pi_start(&mut self) -> Option<XmlToken> {
         assert_eq!(self.state, XmLexerState::Markup);
         if self.remaining() < 2 {
@@ -423,6 +433,7 @@ impl<'a> XmLexer<'a> {
         Some(XmlToken::PIStart(span))
     }
 
+    #[inline(always)]
     fn next_pi_end(&mut self) -> Result<XmlToken, LexerError> {
         if self.remaining() < 2 {
             return Err(LexerError::PIEnd(self.next_span()));
@@ -440,6 +451,7 @@ impl<'a> XmLexer<'a> {
         Ok(XmlToken::PIEnd(span))
     }
 
+    #[inline(always)]
     fn next_element_close_start_tag(&mut self) -> Option<XmlToken> {
         if self.remaining() < 2 {
             return None;
@@ -457,6 +469,7 @@ impl<'a> XmLexer<'a> {
         Some(XmlToken::ElementCloseStartTag(span))
     }
 
+    #[inline(always)]
     fn next_empty_tag(&mut self) -> Result<XmlToken, LexerError> {
         if self.remaining() < 2 {
             return Err(LexerError::EmptyTag(self.next_span()));
@@ -493,47 +506,51 @@ impl<'a> XmLexer<'a> {
     }
 
     /// Reset the `lexer` mod to `CharData`
+    #[inline(always)]
     pub fn with_chardata(mut self) -> Self {
         self.state = XmLexerState::CharData;
         self
     }
 
     /// Reset the `lexer` mod to `Markup`
+    #[inline(always)]
     pub fn with_markup(mut self) -> Self {
         self.state = XmLexerState::Markup;
         self
     }
 
     /// Reset the `lexer` mod to `CharData`
+    #[inline(always)]
     pub fn chardata(&mut self) {
         self.state = XmLexerState::CharData;
     }
 
     /// Reset the `lexer` mod to `Markup`
+    #[inline(always)]
     pub fn markup(&mut self) {
         self.state = XmLexerState::Markup;
     }
 
     /// Returns unparsing source code length.
-    #[inline]
+    #[inline(always)]
     pub fn remaining(&self) -> usize {
         self.span.len - self.offset
     }
 
     /// Returns unparsed source code as str slice.
-    #[inline]
+    #[inline(always)]
     pub fn unparsed(&self) -> &str {
         &self.input[self.offset..]
     }
 
     /// Returns unparsed source code as bytes slice.
-    #[inline]
+    #[inline(always)]
     pub fn unparsed_bytes(&self) -> &[u8] {
         &self.input.as_bytes()[self.offset..]
     }
 
     /// Returns unparsed source code as str slice, up to `len`.
-    #[inline]
+    #[inline(always)]
     pub fn unparsed_with(&self, len: usize) -> &str {
         let mut end = self.offset + len;
 
@@ -545,7 +562,7 @@ impl<'a> XmLexer<'a> {
     }
 
     /// Returns unparsed source code as bytes slice, up to `len`.
-    #[inline]
+    #[inline(always)]
     pub fn unparsed_bytes_with(&self, len: usize) -> &[u8] {
         let mut end = self.offset + len;
 
@@ -559,6 +576,7 @@ impl<'a> XmLexer<'a> {
     /// Returns the span of next byte in the source code.
     ///
     /// The `len` of the returned `Span` is zero, if `eof` is reached.
+    #[inline(always)]
     pub fn next_span(&self) -> XmlSpan {
         XmlSpan {
             offset: self.span.offset + self.offset,
@@ -567,11 +585,13 @@ impl<'a> XmLexer<'a> {
     }
 
     /// Move the read cursor to the span's start position.
+    #[inline(always)]
     pub fn seek(&mut self, offset: usize) {
         self.offset = offset - self.span.offset;
     }
 
     /// Iterate over the source code and returns next token.
+    #[inline(always)]
     pub fn next_token(&mut self) -> Result<Option<XmlToken>, LexerError> {
         loop {
             match self.state {
@@ -636,6 +656,7 @@ impl<'a> XmLexer<'a> {
 impl<'a> Iterator for XmLexer<'a> {
     type Item = Result<XmlToken, LexerError>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         match self.next_token() {
             Ok(v) => v.map(|v| Ok(v)),
@@ -644,12 +665,12 @@ impl<'a> Iterator for XmLexer<'a> {
     }
 }
 
-#[inline]
+#[inline(always)]
 fn is_ws(c: u8) -> bool {
     matches!(c, b'\x20' | b'\x09' | b'\x0d' | b'\x0a')
 }
 
-#[inline]
+#[inline(always)]
 fn is_markup_char(c: u8) -> bool {
     matches!(c, b'<' | b'>' | b'/' | b'?' | b'\'' | b'"')
 }
