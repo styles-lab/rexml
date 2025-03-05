@@ -1,3 +1,5 @@
+//! A lexer implemenation for xml documents.
+//!
 use std::{borrow::Cow, fmt::Display};
 
 /// Lexer may raise this error.
@@ -534,6 +536,12 @@ impl<'a> XmLexer<'a> {
     #[inline(always)]
     pub fn remaining(&self) -> usize {
         self.span.len - self.offset
+    }
+
+    /// Returns source code fragement by span.
+    #[inline(always)]
+    pub fn fragement(&self, span: XmlSpan) -> &str {
+        &self.input[span.offset..(span.offset + span.len)]
     }
 
     /// Returns unparsed source code as str slice.
