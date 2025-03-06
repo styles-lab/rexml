@@ -96,6 +96,27 @@ pub enum XmlToken {
     Eq(XmlSpan),
 }
 
+impl XmlToken {
+    pub fn span(&self) -> XmlSpan {
+        match self {
+            XmlToken::ElementOpenStartTag(xml_span) => *xml_span,
+            XmlToken::ElementCloseStartTag(xml_span) => *xml_span,
+            XmlToken::EndTag(xml_span) => *xml_span,
+            XmlToken::EmptyTag(xml_span) => *xml_span,
+            XmlToken::PIStart(xml_span) => *xml_span,
+            XmlToken::PIEnd(xml_span) => *xml_span,
+            XmlToken::CData(xml_span) => *xml_span,
+            XmlToken::Comment(xml_span) => *xml_span,
+            XmlToken::WS(xml_span) => *xml_span,
+            XmlToken::CharData(xml_span) => *xml_span,
+            XmlToken::Name(xml_span) => *xml_span,
+            XmlToken::DocType(xml_span) => *xml_span,
+            XmlToken::QuoteStr(xml_span) => *xml_span,
+            XmlToken::Eq(xml_span) => *xml_span,
+        }
+    }
+}
+
 /// Read state.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum XmLexerState {
