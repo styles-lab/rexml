@@ -241,7 +241,7 @@ impl<'a> Reader<'a> {
 
         self.expect_eq(ReadKind::XmlDecl)?;
 
-        let version = self.expect_token(ReadKind::XmlDecl, ReadKind::PIStart, |token| {
+        let _ = self.expect_token(ReadKind::XmlDecl, ReadKind::PIStart, |token| {
             if let XmlToken::QuoteStr(token) = token {
                 Some(token)
             } else {
