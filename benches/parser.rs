@@ -1,5 +1,5 @@
 use parserc::Parse;
-use rexml::reader::{Name, parse_eq, parse_ws};
+use rexml::reader::{Name, parse_eq, parse_quote, parse_ws};
 
 fn main() {
     divan::main();
@@ -18,4 +18,9 @@ fn bench_eq() {
 #[divan::bench]
 fn bench_ws() {
     parse_ws(b"    ".as_slice()).unwrap();
+}
+
+#[divan::bench]
+fn bench_quote() {
+    parse_quote(br#""hello:12=""#.as_slice()).unwrap();
 }
