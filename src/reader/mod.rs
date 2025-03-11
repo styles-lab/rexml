@@ -1,6 +1,10 @@
 //! A low-level and `no-std` friendly implemenation of the xml parser .
 
-mod reader;
-pub use reader::*;
+mod errors;
+pub use errors::*;
 
-pub mod lexer;
+mod name;
+pub use name::*;
+
+mod utils;
+pub use utils::*;

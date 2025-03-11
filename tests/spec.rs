@@ -3,8 +3,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use rexml::reader::lexer::XmLexer;
-
 #[test]
 fn test_specs() {
     // _ = pretty_env_logger::try_init();
@@ -61,11 +59,5 @@ fn test_specs() {
 }
 
 fn test_xml(xml: impl AsRef<Path>) {
-    let content = std::fs::read_to_string(xml).unwrap();
-
-    let tokens = XmLexer::from(content)
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
-
-    print!("{} ", tokens.len());
+    let _ = std::fs::read_to_string(xml).unwrap();
 }
