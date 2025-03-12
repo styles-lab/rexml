@@ -1,6 +1,7 @@
 use parserc::Parse;
 use rexml::reader::{
-    Attr, CData, CharData, Comment, DocType, Name, PI, XmlDecl, parse_eq, parse_quote, parse_ws,
+    Attr, CData, CharData, Comment, DocType, ElemStart, Name, PI, XmlDecl, parse_eq, parse_quote,
+    parse_ws,
 };
 
 fn main() {
@@ -74,4 +75,26 @@ fn bench_doc_type() {
         .as_slice(),
     )
     .unwrap();
+}
+
+#[divan::bench_group]
+mod bench_el {
+    use rexml::reader::ElemEnd;
+
+    use super::*;
+
+    #[divan::bench]
+    fn bench_el_start() {
+        ElemStart::parse(br#"<br hello="world" world="hello" >"#.as_slice()).unwrap();
+    }
+
+    #[divan::bench]
+    fn bench_empty_el_start() {
+        ElemStart::parse(br#"<br hello="world" world="hello" />"#.as_slice()).unwrap();
+    }
+
+    #[divan::bench]
+    fn bench_el_end() {
+        ElemEnd::parse(br#"</br >"#.as_slice()).unwrap();
+    }
 }
