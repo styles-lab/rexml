@@ -9,8 +9,8 @@ use super::ReadError;
 /// Attribute value pair.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Attr<I> {
-    name: I,
-    value: I,
+    pub name: I,
+    pub value: I,
 }
 
 impl<I> Parse<I> for Attr<I>

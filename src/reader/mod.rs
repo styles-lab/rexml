@@ -9,8 +9,8 @@ pub use name::*;
 mod utils;
 pub use utils::*;
 
-mod xmldecl;
-pub use xmldecl::*;
+mod pi;
+pub use pi::*;
 
 mod attr;
 pub use attr::*;

@@ -23,4 +23,8 @@ pub enum ReadKind {
     Keyword(&'static str),
     #[error("`version`")]
     Version,
+    #[error("`yes` or `no`")]
+    YesNo,
+    #[error("`encoding`")]
+    Encoding,
 }
