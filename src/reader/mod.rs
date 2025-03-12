@@ -13,3 +13,4 @@ mod xmldecl;
 pub use xmldecl::*;
 
 mod attr;
+pub use attr::*;

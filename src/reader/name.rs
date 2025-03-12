@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 
-use parserc::{Input, Parse, Parser, take_till};
+use parserc::{ControlFlow, Input, Parse, Parser, take_till};
 
 use crate::reader::utils::{is_markup_char, is_ws};
 
-use super::ReadError;
+use super::{ReadError, ReadKind};
 
 /// Corresponds to dom name.
 #[derive(Debug, PartialEq, Clone)]
@@ -13,7 +13,7 @@ pub struct Name<I>(pub I);
 /// This parse does not check the [`NameStartChar`](https://www.w3.org/TR/xml11/#NT-NameStartChar) contraint.
 impl<I> Parse<I> for Name<I>
 where
-    I: Input<Item = u8> + Clone + Debug,
+    I: Input<Item = u8> + Debug,
 {
     type Error = ReadError<I>;
 
@@ -21,6 +21,13 @@ where
     fn parse(input: I) -> parserc::Result<Self, I, Self::Error> {
         let (name, input) =
             take_till(|c: u8| is_markup_char(c) || is_ws(c) || c == b'=').parse(input)?;
+
+        if name.is_empty() {
+            return Err(ControlFlow::Recovable(ReadError::Expect(
+                ReadKind::Name,
+                input,
+            )));
+        }
 
         Ok((Name(name), input))
     }

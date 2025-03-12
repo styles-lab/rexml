@@ -25,7 +25,7 @@ where
     I: Input<Item = u8> + AsBytes + Clone + Debug,
 {
     type Error = ReadError<I>;
-
+    #[inline(always)]
     fn parse(input: I) -> parserc::Result<Self, I, Self::Error> {
         let (_, input) = keyword(b"<?xml".as_slice()).parse(input)?;
 

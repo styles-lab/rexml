@@ -13,6 +13,8 @@ pub enum ReadError<I> {
 
 #[derive(Debug, thiserror::Error, PartialEq, Clone)]
 pub enum ReadKind {
+    #[error("`Name`")]
+    Name,
     #[error("`=`")]
     Eq,
     #[error("`whitespace`")]

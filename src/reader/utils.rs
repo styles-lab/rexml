@@ -6,7 +6,7 @@ use crate::reader::ReadKind;
 
 use super::ReadError;
 
-/// Check if the `c` is whitespace.#[inline(always)]
+/// Check if the `c` is whitespace.
 #[inline(always)]
 pub(super) fn is_ws(c: u8) -> bool {
     matches!(c, b'\x20' | b'\x09' | b'\x0d' | b'\x0a')
