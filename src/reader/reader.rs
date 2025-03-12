@@ -6,7 +6,7 @@ use super::{
     CData, CharData, Comment, DocType, ElemEnd, ElemStart, PI, ReadError, XmlDecl, ensure_ws,
 };
 
-/// The variant returns by `reader`.
+/// Xml node type returns by [`XmlReader`].
 #[derive(Debug, PartialEq, Clone)]
 pub enum XmlNode<I> {
     XmlDecl(XmlDecl<I>),
