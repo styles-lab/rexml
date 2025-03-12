@@ -1,6 +1,8 @@
 use std::fmt::Debug;
 
-use parserc::{AsBytes, Input, Kind, Parse, Parser, ParserExt, keyword, take_till, take_until};
+use parserc::{
+    AsBytes, ControlFlow, Input, Kind, Parse, Parser, ParserExt, keyword, take_till, take_until,
+};
 
 use super::{ReadError, ReadKind};
 
@@ -17,6 +19,13 @@ where
     #[inline(always)]
     fn parse(input: I) -> parserc::Result<Self, I, Self::Error> {
         let (content, input) = take_till(|c| c == b'<').parse(input)?;
+
+        if content.is_empty() {
+            return Err(ControlFlow::Recovable(ReadError::Expect(
+                ReadKind::CharData,
+                input,
+            )));
+        }
 
         Ok((CharData(content), input))
     }

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use parserc::{Input, Parser, ParserExt, next, take_till, take_while};
+use parserc::{ControlFlow, Input, Parser, ParserExt, next, take_till, take_while};
 
 use crate::reader::ReadKind;
 
@@ -24,6 +24,24 @@ where
     I: Input<Item = u8> + Debug + Clone,
 {
     take_while(|c: u8| is_ws(c)).parse(input)
+}
+
+/// ensure `S` chars.
+#[inline(always)]
+pub fn ensure_ws<I>(input: I) -> parserc::Result<I, I, ReadError<I>>
+where
+    I: Input<Item = u8> + Debug + Clone,
+{
+    let (s, input) = parse_ws(input)?;
+
+    if s.is_empty() {
+        return Err(ControlFlow::Recovable(ReadError::Expect(
+            ReadKind::S,
+            input,
+        )));
+    }
+
+    Ok((s, input))
 }
 
 /// Parse [`Eq`](https://www.w3.org/TR/xml11/#NT-Eq)

@@ -1,15 +1,26 @@
 use quick_xml::{Reader, events::Event};
+use rexml::reader::{ReadState, XmlNode};
 
 fn main() {
     divan::main();
 }
 
-// #[divan::bench(sample_count = 1000)]
-// fn rexml_read() {
-//     for event in XmLexer::from(include_str!("../spec/cat.svg")) {
-//         event.expect("");
-//     }
-// }
+#[divan::bench(sample_count = 1000)]
+fn rexml_read() {
+    for node in rexml::reader::XmlReader::new(
+        ReadState::XmlDecl,
+        include_str!("../spec/cat.svg").as_bytes(),
+    ) {
+        match node.unwrap() {
+            XmlNode::Start(start) => {
+                for attr in start.attrs() {
+                    attr.unwrap();
+                }
+            }
+            _ => {}
+        }
+    }
+}
 
 #[divan::bench(sample_count = 1000)]
 fn xml_dom_read() {

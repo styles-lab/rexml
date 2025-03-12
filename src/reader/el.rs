@@ -4,7 +4,7 @@ use parserc::{AsBytes, ControlFlow, Input, Parse, Parser, ParserExt, keyword, ne
 
 use crate::reader::{Name, parse_quote, parse_ws};
 
-use super::{ReadError, ReadKind};
+use super::{Attr, ReadError, ReadKind};
 
 /// The start tag of an element.
 ///
@@ -14,6 +14,40 @@ pub struct ElemStart<I> {
     pub name: I,
     pub unparsed: I,
     pub is_empty: bool,
+}
+
+impl<I> ElemStart<I>
+where
+    I: Input<Item = u8> + AsBytes + Debug + Clone,
+{
+    /// Create an iterator over attribute list.
+    #[inline(always)]
+    pub fn attrs(&self) -> Attrs<I> {
+        Attrs(self.unparsed.clone())
+    }
+}
+
+/// Attribute list.
+#[derive(Debug, PartialEq, Clone)]
+pub struct Attrs<I>(I);
+
+impl<I> Iterator for Attrs<I>
+where
+    I: Input<Item = u8> + AsBytes + Debug + Clone,
+{
+    type Item = Result<Attr<I>, ControlFlow<ReadError<I>>>;
+
+    #[inline(always)]
+    fn next(&mut self) -> Option<Self::Item> {
+        let (next, input) = match Attr::into_parser().ok().parse(self.0.clone()) {
+            Ok(v) => v,
+            Err(err) => return Some(Err(err)),
+        };
+
+        self.0 = input;
+
+        next.map(|v| Ok(v))
+    }
 }
 
 impl<I> Parse<I> for ElemStart<I>

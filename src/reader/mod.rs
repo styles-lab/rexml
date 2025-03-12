@@ -21,7 +21,8 @@ pub use chardata::*;
 mod doctype;
 pub use doctype::*;
 
-mod reader;
-
 mod el;
 pub use el::*;
+
+mod reader;
+pub use reader::*;

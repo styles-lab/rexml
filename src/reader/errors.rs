@@ -27,4 +27,6 @@ pub enum ReadKind {
     YesNo,
     #[error("`encoding`")]
     Encoding,
+    #[error("`chardata`")]
+    CharData,
 }
