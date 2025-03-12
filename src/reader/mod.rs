@@ -9,8 +9,14 @@ pub use name::*;
 mod utils;
 pub use utils::*;
 
-mod pi;
-pub use pi::*;
+mod misc;
+pub use misc::*;
 
 mod attr;
 pub use attr::*;
+
+mod chardata;
+pub use chardata::*;
+
+mod doctype;
+pub use doctype::*;

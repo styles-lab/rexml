@@ -177,12 +177,34 @@ where
     }
 }
 
+/// See [`comment`](https://www.w3.org/TR/xml11/#NT-Comment)
+#[derive(Debug, PartialEq, Clone)]
+pub struct Comment<I>(pub I);
+
+impl<I> Parse<I> for Comment<I>
+where
+    I: Input<Item = u8> + AsBytes + Debug,
+{
+    type Error = ReadError<I>;
+
+    #[inline(always)]
+    fn parse(input: I) -> parserc::Result<Self, I, Self::Error> {
+        let (_, input) = keyword("<!--").parse(input)?;
+
+        let (content, mut input) = take_until("-->").parse(input)?;
+
+        input.split_to(3);
+
+        Ok((Comment(content), input))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use parserc::Parse;
 
     use crate::{
-        reader::{PI, XmlDecl},
+        reader::{Comment, PI, XmlDecl},
         types::XmlVersion,
     };
 
@@ -259,6 +281,14 @@ mod tests {
                 },
                 b"".as_slice()
             ))
+        );
+    }
+
+    #[test]
+    fn test_comment() {
+        assert_eq!(
+            Comment::parse(br#"<!-- >?? <? -->"#.as_slice()),
+            Ok((Comment(br#" >?? <? "#.as_slice()), b"".as_slice()))
         );
     }
 }
