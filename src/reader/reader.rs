@@ -132,6 +132,15 @@ where
     }
 }
 
+impl<I> From<I> for XmlReader<I>
+where
+    I: Input<Item = u8> + AsBytes + Clone + Debug,
+{
+    fn from(value: I) -> Self {
+        XmlReader::new(ReadState::XmlDecl, value)
+    }
+}
+
 impl<I> XmlReader<I>
 where
     I: Input<Item = u8> + AsBytes + Clone + Debug,

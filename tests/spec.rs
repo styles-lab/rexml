@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use rexml::reader::{ReadState, XmlReader};
+use rexml::reader::XmlReader;
 
 #[test]
 fn test_specs() {
@@ -63,7 +63,7 @@ fn test_specs() {
 fn test_xml(xml: impl AsRef<Path>) {
     let content = std::fs::read_to_string(xml).unwrap();
 
-    let counter = XmlReader::new(ReadState::XmlDecl, content.as_bytes())
+    let counter = XmlReader::from(content.as_bytes())
         .collect::<Result<Vec<_>, _>>()
         .unwrap()
         .len();
