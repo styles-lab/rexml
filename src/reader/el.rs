@@ -1,6 +1,8 @@
 use std::fmt::Debug;
 
-use parserc::{AsBytes, ControlFlow, Input, Parse, Parser, ParserExt, keyword, next, take_till};
+use parserc::{
+    AsBytes, ControlFlow, Input, Kind, Parse, Parser, ParserExt, keyword, next, take_till,
+};
 
 use crate::reader::{Name, parse_quote, parse_ws};
 
@@ -131,7 +133,9 @@ where
     type Error = ReadError<I>;
 
     fn parse(input: I) -> parserc::Result<Self, I, Self::Error> {
-        let (_, input) = keyword("</").parse(input)?;
+        let (_, input) = keyword("</")
+            .map_err(|_: Kind| ReadError::Expect(ReadKind::Keyword("</"), input.clone()))
+            .parse(input.clone())?;
 
         let (name, input) = Name::into_parser().fatal().parse(input)?;
 
