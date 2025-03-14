@@ -91,26 +91,26 @@ where
     }
 
     /// Start write element start tag.
-    pub fn write_elment_start<N>(&mut self, name: N) -> Result<ElemStartWrite<'_, W>>
+    pub fn write_elment_start<N>(&mut self, name: N) -> Result<ElemStart<'_, W>>
     where
         N: AsRef<str>,
     {
         self.sink.write_fmt(format_args!("<{}", name.as_ref()))?;
 
-        Ok(ElemStartWrite {
+        Ok(ElemStart {
             sink: self,
             is_empty: false,
         })
     }
 
     /// Start write empty element start tag.
-    pub fn write_empty_elment<N>(&mut self, name: N) -> Result<ElemStartWrite<'_, W>>
+    pub fn write_empty_elment<N>(&mut self, name: N) -> Result<ElemStart<'_, W>>
     where
         N: AsRef<str>,
     {
         self.sink.write_fmt(format_args!("<{}", name.as_ref()))?;
 
-        Ok(ElemStartWrite {
+        Ok(ElemStart {
             sink: self,
             is_empty: true,
         })
@@ -136,7 +136,7 @@ where
 }
 
 /// A write for element start tag.
-pub struct ElemStartWrite<'a, W>
+pub struct ElemStart<'a, W>
 where
     W: Write,
 {
@@ -144,7 +144,7 @@ where
     is_empty: bool,
 }
 
-impl<'a, W> Drop for ElemStartWrite<'a, W>
+impl<'a, W> Drop for ElemStart<'a, W>
 where
     W: Write,
 {
@@ -159,7 +159,7 @@ where
     }
 }
 
-impl<'a, W> ElemStartWrite<'a, W>
+impl<'a, W> ElemStart<'a, W>
 where
     W: Write,
 {
